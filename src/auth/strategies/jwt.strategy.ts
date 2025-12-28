@@ -30,8 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Invalid token payload: missing sub');
     }
 
-    // Payload do Supabase tem estrutura diferente do Auth0
-    // sub é o UUID do usuário (não mais auth0|xxx)
+    // Payload do Supabase: sub é o UUID do usuário
     const userId = payload.sub;
     const email = payload.email || '';
     const name = payload.user_metadata?.full_name || payload.user_metadata?.name || '';

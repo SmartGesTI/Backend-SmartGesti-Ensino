@@ -249,25 +249,26 @@ export class RolesService {
   }
 
   /**
-   * Lista todos os cargos de um usuário
+   * Obtém todos os cargos do usuário
+   * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
    */
-  async getUserRoles(auth0Id: string, tenantId: string, schoolId?: string) {
+  async getUserRoles(supabaseId: string, tenantId: string, schoolId?: string) {
     this.logger.debug('Buscando roles do usuário', 'RolesService', {
-      auth0Id,
+      supabaseId,
       tenantId,
       schoolId,
     });
 
-    // 1. Primeiro buscar o UUID do usuário pelo auth0_id
+    // 1. Primeiro buscar o UUID do usuário pelo auth0_id (armazena UUID do Supabase)
     const { data: userData, error: userError } = await this.supabase.getClient()
       .from('users')
       .select('id')
-      .eq('auth0_id', auth0Id)
+      .eq('auth0_id', supabaseId)
       .single();
 
     if (userError || !userData) {
       this.logger.warn('Usuário não encontrado', 'RolesService', {
-        auth0Id,
+        supabaseId,
         error: userError?.message,
       });
       // Retornar array vazio se usuário não existe (pode ser primeira vez)
@@ -295,7 +296,7 @@ export class RolesService {
         error.message,
         'RolesService',
         {
-          auth0Id,
+          supabaseId,
           userId,
           tenantId,
           schoolId,
@@ -310,7 +311,7 @@ export class RolesService {
     }
 
     this.logger.debug('Roles encontrados', 'RolesService', {
-      auth0Id,
+      supabaseId,
       userId,
       count: data?.length || 0,
     });

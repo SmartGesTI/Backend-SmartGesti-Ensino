@@ -23,7 +23,7 @@ export class PermissionsController {
     @Headers('x-tenant-id') tenantId: string,
     @Query('schoolId') schoolId?: string,
   ) {
-    const userId = req.user.sub; // Auth0 user ID
+    const userId = req.user.sub; // Supabase user ID (UUID)
 
     const [permissions, isOwner, hierarchy] = await Promise.all([
       this.permissionsService.getUserPermissions(userId, tenantId, schoolId),
@@ -57,7 +57,7 @@ export class PermissionsController {
       throw new Error('Parâmetros obrigatórios: resource, action');
     }
 
-    const userId = req.user.sub; // Auth0 user ID
+    const userId = req.user.sub; // Supabase user ID (UUID)
 
     const hasPermission = await this.permissionsService.checkPermission(
       userId,

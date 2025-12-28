@@ -22,6 +22,6 @@ export class CreateTenantDto {
   
   // Campos para adicionar proprietário automaticamente
   owner_email?: string;
-  owner_auth0_id?: string;
+  owner_auth0_id?: string; // UUID do Supabase (armazenado em auth0_id)
   ownership_level?: 'owner' | 'co-owner';
 }

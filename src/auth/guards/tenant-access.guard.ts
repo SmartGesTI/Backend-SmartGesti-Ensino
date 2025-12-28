@@ -38,7 +38,7 @@ export class TenantAccessGuard implements CanActivate {
       return true;
     }
 
-    const auth0Id = user.sub;
+    const supabaseId = user.sub; // UUID do Supabase
 
     try {
       // 1. Buscar usuário no banco
@@ -46,14 +46,14 @@ export class TenantAccessGuard implements CanActivate {
         .getClient()
         .from('users')
         .select('id, tenant_id, email')
-        .eq('auth0_id', auth0Id)
+        .eq('auth0_id', supabaseId) // Campo auth0_id armazena UUID do Supabase
         .single();
 
       if (userError || !dbUser) {
         this.logger.warn(
           'User not found in database',
           'TenantAccessGuard',
-          { auth0Id, tenantId },
+          { supabaseId, tenantId },
         );
         throw new UnauthorizedException('Usuário não encontrado no sistema');
       }
@@ -65,7 +65,7 @@ export class TenantAccessGuard implements CanActivate {
         this.logger.log(
           'User has no tenant_id yet, allowing access for first-time setup',
           'TenantAccessGuard',
-          { userId: dbUser.id, auth0Id, requestedTenantId: tenantId },
+          { userId: dbUser.id, supabaseId, requestedTenantId: tenantId },
         );
         return true;
       }
@@ -81,7 +81,7 @@ export class TenantAccessGuard implements CanActivate {
             userEmail: dbUser.email,
             userTenantId: dbUser.tenant_id,
             requestedTenantId: tenantId,
-            auth0Id,
+            supabaseId,
             path: request.url,
             method: request.method,
           },
@@ -148,7 +148,7 @@ export class TenantAccessGuard implements CanActivate {
         `Tenant access validation error: ${error.message}`,
         error.stack,
         'TenantAccessGuard',
-        { auth0Id, tenantId, error: error.message },
+        { supabaseId, tenantId, error: error.message },
       );
 
       throw new ForbiddenException(

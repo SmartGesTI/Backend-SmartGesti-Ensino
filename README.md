@@ -6,15 +6,13 @@ Backend NestJS para o sistema SmartGesti Ensino.
 
 - **NestJS** - Framework Node.js
 - **TypeScript** - Tipagem estática
-- **Auth0** - Autenticação JWT
-- **Supabase** - Banco de dados PostgreSQL
-- **Passport** - Estratégia JWT
+- **Supabase** - Banco de dados PostgreSQL e autenticação
+- **Supabase JWT** - Validação de tokens
 
 ## 📋 Pré-requisitos
 
 - Node.js 22.x LTS
 - npm ou yarn
-- Conta Auth0
 - Conta Supabase
 
 ## 🔧 Instalação
@@ -28,11 +26,11 @@ npm install
 Crie um arquivo `.env` na raiz do projeto:
 
 ```env
-AUTH0_DOMAIN=seu-tenant.auth0.com
-AUTH0_AUDIENCE=https://smartgesti-ensino-api
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_KEY=sua-service-key
+SUPABASE_JWT_SECRET=sua-jwt-secret
 PORT=3001
+NODE_ENV=development
 ```
 
 ## 🏃 Executando
@@ -53,7 +51,7 @@ npm run start:prod
 ## 📡 Endpoints
 
 - `GET /health` - Health check
-- `POST /api/auth/sync` - Sincronizar usuário do Auth0
+- `POST /api/auth/sync` - Sincronizar usuário do Supabase
 - `GET /api/users/me` - Obter dados do usuário atual
 
 ## 🚢 Deploy no Railway

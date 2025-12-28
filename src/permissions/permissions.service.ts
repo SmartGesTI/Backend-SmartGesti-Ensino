@@ -12,15 +12,15 @@ export class PermissionsService {
   constructor(private readonly supabase: SupabaseService) {}
 
   /**
-   * Converte Auth0 ID para UUID do usuário
-   * @param auth0Id - ID do Auth0 (ex: "google-oauth2|123...")
+   * Converte Supabase ID (armazenado em auth0_id) para UUID do usuário
+   * @param supabaseId - UUID do Supabase (armazenado no campo auth0_id)
    * @returns UUID do usuário ou null se não encontrado
    */
-  private async getUserUuidFromAuth0(auth0Id: string): Promise<string | null> {
+  private async getUserUuidFromSupabase(supabaseId: string): Promise<string | null> {
     const { data, error } = await this.supabase.getClient()
       .from('users')
       .select('id')
-      .eq('auth0_id', auth0Id)
+      .eq('auth0_id', supabaseId)
       .single();
 
     if (error || !data) {
@@ -32,12 +32,12 @@ export class PermissionsService {
 
   /**
    * Verifica se o usuário é proprietário da instituição
-   * @param auth0Id - ID do Auth0
+   * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
    */
-  async isOwner(auth0Id: string, tenantId: string): Promise<boolean> {
-    const userId = await this.getUserUuidFromAuth0(auth0Id);
+  async isOwner(supabaseId: string, tenantId: string): Promise<boolean> {
+    const userId = await this.getUserUuidFromSupabase(supabaseId);
     console.log('[PermissionsService.isOwner] Verificando proprietário:', {
-      auth0Id,
+      supabaseId,
       userId,
       tenantId,
     });
@@ -65,15 +65,15 @@ export class PermissionsService {
 
   /**
    * Verifica se o usuário tem um cargo específico
-   * @param auth0Id - ID do Auth0
+   * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
    */
   async hasRole(
-    auth0Id: string,
+    supabaseId: string,
     roleSlug: string,
     tenantId: string,
     schoolId?: string,
   ): Promise<boolean> {
-    const userId = await this.getUserUuidFromAuth0(auth0Id);
+    const userId = await this.getUserUuidFromSupabase(supabaseId);
     if (!userId) {
       return false;
     }
@@ -96,23 +96,23 @@ export class PermissionsService {
 
   /**
    * Obtém todas as permissões do usuário (cargos + grupos + específicas)
-   * @param auth0Id - ID do Auth0
+   * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
    */
   async getUserPermissions(
-    auth0Id: string,
+    supabaseId: string,
     tenantId: string,
     schoolId?: string,
   ): Promise<Record<string, string[]>> {
     const permissions: Record<string, string[]> = {};
 
     // 1. Verificar se é proprietário (acesso total)
-    const isOwner = await this.isOwner(auth0Id, tenantId);
+    const isOwner = await this.isOwner(supabaseId, tenantId);
     if (isOwner) {
       return { '*': ['*'] };
     }
 
     // 2. Converter Auth0 ID para UUID
-    const userId = await this.getUserUuidFromAuth0(auth0Id);
+    const userId = await this.getUserUuidFromSupabase(supabaseId);
     if (!userId) {
       // Usuário não existe no banco ainda
       return {};
@@ -147,10 +147,10 @@ export class PermissionsService {
 
   /**
    * Verifica se o usuário tem permissão para uma ação em um recurso
-   * @param auth0Id - ID do Auth0
+   * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
    */
   async checkPermission(
-    auth0Id: string,
+    supabaseId: string,
     resource: string,
     action: string,
     context: PermissionContext,
@@ -158,14 +158,14 @@ export class PermissionsService {
     const { tenantId, schoolId } = context;
 
     // 1. Verificar se é proprietário
-    const isOwner = await this.isOwner(auth0Id, tenantId);
+    const isOwner = await this.isOwner(supabaseId, tenantId);
     if (isOwner) {
       return true;
     }
 
     // 2. Obter todas as permissões
     const permissions = await this.getUserPermissions(
-      auth0Id,
+      supabaseId,
       tenantId,
       schoolId,
     );
@@ -320,20 +320,20 @@ export class PermissionsService {
 
   /**
    * Obtém o nível hierárquico mais alto do usuário
-   * @param auth0Id - ID do Auth0
+   * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
    */
   async getUserHighestHierarchy(
-    auth0Id: string,
+    supabaseId: string,
     tenantId: string,
     schoolId?: string,
   ): Promise<number> {
     // Proprietário tem hierarquia 0
-    const isOwner = await this.isOwner(auth0Id, tenantId);
+    const isOwner = await this.isOwner(supabaseId, tenantId);
     if (isOwner) {
       return 0;
     }
 
-    const userId = await this.getUserUuidFromAuth0(auth0Id);
+    const userId = await this.getUserUuidFromSupabase(supabaseId);
     if (!userId) {
       return 999; // Sem usuário = hierarquia mais baixa
     }

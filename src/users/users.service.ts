@@ -8,7 +8,7 @@ import { UserStatusDto } from './dto/user-status.dto';
 @Injectable()
 export class UsersService {
   // Cache de usuários para evitar consultas repetidas
-  private userCacheByAuth0Id = new Map<string, { user: User; expiresAt: number }>();
+  private userCacheBySupabaseId = new Map<string, { user: User; expiresAt: number }>();
   private userCacheById = new Map<string, { user: User; expiresAt: number }>();
   private readonly CACHE_TTL = 60 * 1000; // 1 minuto (menor que tenant pois user muda mais)
 
@@ -23,10 +23,10 @@ export class UsersService {
   }
 
   // Limpar cache do usuário (chamado após updates)
-  private invalidateUserCache(userId: string, auth0Id?: string) {
+  private invalidateUserCache(userId: string, supabaseId?: string) {
     this.userCacheById.delete(userId);
-    if (auth0Id) {
-      this.userCacheByAuth0Id.delete(auth0Id);
+    if (supabaseId) {
+      this.userCacheBySupabaseId.delete(supabaseId);
     }
   }
 
@@ -34,7 +34,8 @@ export class UsersService {
   private cacheUser(user: User) {
     const cacheEntry = { user, expiresAt: Date.now() + this.CACHE_TTL };
     this.userCacheById.set(user.id, cacheEntry);
-    this.userCacheByAuth0Id.set(user.auth0_id, cacheEntry);
+    // auth0_id armazena o UUID do Supabase (mantido para compatibilidade com schema existente)
+    this.userCacheBySupabaseId.set(user.auth0_id, cacheEntry);
   }
 
   async syncUserFromSupabase(supabaseUser: SupabaseUser, subdomain?: string): Promise<User> {
@@ -72,8 +73,8 @@ export class UsersService {
       }
     }
 
-    // Buscar usuário existente por auth0_id (que agora armazena o UUID do Supabase) OU email
-    // Mantendo auth0_id para compatibilidade durante migração
+    // Buscar usuário existente por auth0_id (armazena UUID do Supabase) OU email
+    // NOTA: Campo auth0_id mantido no schema para compatibilidade, mas agora armazena Supabase UUID
     const { data: users, error: searchError } = await this.supabase
       .from('users')
       .select('*')
@@ -134,17 +135,17 @@ export class UsersService {
       };
 
       // Se auth0_id diferente, atualizar (usuário trocou de provider ou migração)
-      // auth0_id agora armazena o UUID do Supabase
+      // auth0_id armazena o UUID do Supabase
       if (existingUser.auth0_id !== supabaseUser.id) {
         updateData.auth0_id = supabaseUser.id;
         this.logger.log(
-          'Updating auth0_id for existing user (provider changed or migration)',
+          'Updating supabase_id (auth0_id field) for existing user',
           'UsersService',
           {
             userId: existingUser.id,
             email: existingUser.email,
-            oldAuth0Id: existingUser.auth0_id,
-            newSupabaseUserId: supabaseUser.id,
+            oldSupabaseId: existingUser.auth0_id,
+            newSupabaseId: supabaseUser.id,
           },
         );
       }
@@ -183,7 +184,7 @@ export class UsersService {
       const { data: newUser, error } = await this.supabase
         .from('users')
         .insert({
-          auth0_id: supabaseUser.id, // Armazenando UUID do Supabase em auth0_id (compatibilidade)
+          auth0_id: supabaseUser.id, // Campo auth0_id armazena UUID do Supabase (compatibilidade com schema)
           email: supabaseUser.email,
           full_name: supabaseUser.user_metadata?.full_name || supabaseUser.name,
           avatar_url: supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || supabaseUser.picture,
@@ -229,7 +230,7 @@ export class UsersService {
 
     // Verificar cache primeiro (usando email como chave)
     const cacheKey = `email_${email}`;
-    const cached = this.userCacheByAuth0Id.get(cacheKey);
+    const cached = this.userCacheBySupabaseId.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.user;
     }
@@ -250,7 +251,7 @@ export class UsersService {
     const user = data as User;
     
     // Cachear por email
-    this.userCacheByAuth0Id.set(cacheKey, {
+    this.userCacheBySupabaseId.set(cacheKey, {
       user,
       expiresAt: Date.now() + this.CACHE_TTL,
     });
@@ -262,16 +263,16 @@ export class UsersService {
   }
 
   /**
-   * Busca usuário por auth0_id (mantido para compatibilidade)
+   * Busca usuário por Supabase ID (armazenado no campo auth0_id para compatibilidade)
    * NOTA: Preferir getUserByEmail() como método principal
-   * @param auth0Id - ID do Auth0
+   * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
    * @returns User ou null
    */
-  async getUserByAuth0Id(auth0Id: string): Promise<User | null> {
-    if (!auth0Id) return null;
+  async getUserByAuth0Id(supabaseId: string): Promise<User | null> {
+    if (!supabaseId) return null;
 
     // Verificar cache primeiro
-    const cached = this.userCacheByAuth0Id.get(auth0Id);
+    const cached = this.userCacheBySupabaseId.get(supabaseId);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.user;
     }
@@ -279,7 +280,7 @@ export class UsersService {
     const { data, error } = await this.supabase
       .from('users')
       .select('*')
-      .eq('auth0_id', auth0Id)
+      .eq('auth0_id', supabaseId)
       .single();
 
     if (error) {
@@ -338,12 +339,12 @@ export class UsersService {
       return user;
     }
 
-    // Criar novo usuário com auth0_id null (será preenchido no primeiro login)
+    // Criar novo usuário com auth0_id null (será preenchido no primeiro login via Supabase)
     const { data: newUser, error } = await this.supabase
       .from('users')
       .insert({
         email,
-        auth0_id: null, // Será preenchido quando fizer login via Auth0
+        auth0_id: null, // Será preenchido quando fizer login via Supabase
         full_name: email.split('@')[0], // Nome temporário baseado no email
         role: 'user',
         ai_context: {},
@@ -375,12 +376,12 @@ export class UsersService {
 
   /**
    * Completa o perfil do usuário com nome, sobrenome e avatar
-   * @param auth0Id - ID do Auth0
+   * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
    * @param dto - Dados do perfil
    * @returns User atualizado
    */
-  async completeProfile(auth0Id: string, dto: { given_name: string; family_name: string; avatar_url?: string }): Promise<User> {
-    const user = await this.getUserByAuth0Id(auth0Id);
+  async completeProfile(supabaseId: string, dto: { given_name: string; family_name: string; avatar_url?: string }): Promise<User> {
+    const user = await this.getUserByAuth0Id(supabaseId);
     
     if (!user) {
       throw new Error('Usuário não encontrado');
@@ -413,10 +414,10 @@ export class UsersService {
     try {
       const supabaseAdmin = this.supabaseService.getClient();
       // Buscar metadados atuais do usuário no Supabase Auth para preservar
-      const { data: { user: supabaseAuthUser } } = await supabaseAdmin.auth.admin.getUserById(auth0Id);
+      const { data: { user: supabaseAuthUser } } = await supabaseAdmin.auth.admin.getUserById(supabaseId);
       
       const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
-        auth0Id,
+        supabaseId,
         {
           user_metadata: {
             ...(supabaseAuthUser?.user_metadata || {}), // Preservar metadados existentes
@@ -429,7 +430,7 @@ export class UsersService {
       );
 
       if (updateAuthError) {
-        this.logger.warn('Failed to update Supabase Auth user metadata', updateAuthError.message, 'UsersService', {
+        this.logger.warn('Failed to update Supabase Auth user metadata', 'UsersService', {
           userId: user.id,
           error: updateAuthError.message,
         });
@@ -441,8 +442,9 @@ export class UsersService {
         });
       }
     } catch (updateError: any) {
-      this.logger.warn('Exception updating Supabase Auth user metadata', updateError.message, 'UsersService', {
+      this.logger.warn('Exception updating Supabase Auth user metadata', 'UsersService', {
         userId: user.id,
+        error: updateError.message,
       });
       // Não bloquear se falhar
     }
@@ -455,7 +457,7 @@ export class UsersService {
     });
 
     // Invalidar cache
-    this.invalidateUserCache(user.id, auth0Id);
+    this.invalidateUserCache(user.id, supabaseId);
 
     this.logger.log('Profile completed successfully', 'UsersService', {
       userId: user.id,
@@ -503,11 +505,11 @@ export class UsersService {
 
   /**
    * Verifica o status do usuário (tenant, escolas, roles, ownership)
-   * @param auth0Id - ID do Auth0
+   * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
    * @returns UserStatusDto
    */
-  async getUserStatus(auth0Id: string): Promise<UserStatusDto> {
-    const user = await this.getUserByAuth0Id(auth0Id);
+  async getUserStatus(supabaseId: string): Promise<UserStatusDto> {
+    const user = await this.getUserByAuth0Id(supabaseId);
 
     if (!user) {
       return {
