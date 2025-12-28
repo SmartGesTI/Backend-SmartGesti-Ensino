@@ -25,14 +25,13 @@ export class PermissionsController {
   ) {
     const userId = req.user.sub; // Supabase user ID (UUID)
 
-    const [permissions, isOwner, hierarchy] = await Promise.all([
-      this.permissionsService.getUserPermissions(userId, tenantId, schoolId),
-      this.permissionsService.isOwner(userId, tenantId),
-      this.permissionsService.getUserHighestHierarchy(
-        userId,
-        tenantId,
-        schoolId,
-      ),
+    // Chamar isOwner apenas uma vez e reutilizar
+    const isOwner = await this.permissionsService.isOwner(userId, tenantId);
+
+    // Usar versões otimizadas que aceitam isOwner pré-calculado
+    const [permissions, hierarchy] = await Promise.all([
+      this.permissionsService.getUserPermissionsWithOwner(userId, tenantId, schoolId, isOwner),
+      this.permissionsService.getUserHighestHierarchyWithOwner(userId, tenantId, schoolId, isOwner),
     ]);
 
     return {

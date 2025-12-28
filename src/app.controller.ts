@@ -22,7 +22,7 @@ export class AppController {
     this.logger.verbose('Teste de log VERBOSE', 'AppController', { verbose: 'detalhes' });
 
     return {
-      message: 'Logs de teste enviados! Verifique o PostHog e os arquivos em logs/',
+      message: 'Logs de teste enviados! Verifique os arquivos em logs/',
       timestamp: new Date().toISOString(),
     };
   }
@@ -42,7 +42,7 @@ export class AppController {
         },
       );
       return {
-        message: 'Erro de teste logado! Verifique o PostHog e logs/error.log',
+        message: 'Erro de teste logado! Verifique logs/error.log',
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }

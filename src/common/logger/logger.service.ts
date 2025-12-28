@@ -1,7 +1,4 @@
-import { Injectable, LoggerService as NestLoggerService, OnModuleDestroy } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PostHog } from 'posthog-node';
-import { logs } from '@opentelemetry/api-logs';
+import { Injectable, LoggerService as NestLoggerService } from '@nestjs/common';
 import * as winston from 'winston';
 
 export enum LogLevel {
@@ -13,13 +10,10 @@ export enum LogLevel {
 }
 
 @Injectable()
-export class LoggerService implements NestLoggerService, OnModuleDestroy {
-  private posthog: PostHog | null = null;
+export class LoggerService implements NestLoggerService {
   private winstonLogger: winston.Logger;
-  private otelLogger: any = null;
 
-  constructor(private configService: ConfigService) {
-    // Configurar Winston
+  constructor() {
     this.winstonLogger = winston.createLogger({
       level: process.env.LOG_LEVEL || 'info',
       format: winston.format.combine(
@@ -54,115 +48,25 @@ export class LoggerService implements NestLoggerService, OnModuleDestroy {
         }),
       ],
     });
-
-    // Configurar PostHog se disponível
-    const posthogApiKey = this.configService.get<string>('POSTHOG_API_KEY');
-    const posthogHost = this.configService.get<string>('POSTHOG_HOST') || 'https://us.i.posthog.com';
-
-    if (posthogApiKey) {
-      this.posthog = new PostHog(posthogApiKey, {
-        host: posthogHost,
-        flushAt: 20,
-        flushInterval: 10000,
-      });
-      this.winstonLogger.info('PostHog initialized', { context: 'LoggerService' });
-    } else {
-      this.winstonLogger.warn('PostHog API key not found, analytics disabled', {
-        context: 'LoggerService',
-      });
-    }
-
-    // Configurar OpenTelemetry Logger se disponível
-    try {
-      this.otelLogger = logs.getLogger('smartgesti-ensino-backend');
-    } catch (error) {
-      // OpenTelemetry pode não estar inicializado ainda
-      this.winstonLogger.debug('OpenTelemetry logger not available yet', {
-        context: 'LoggerService',
-      });
-    }
   }
 
   log(message: string, context?: string, meta?: Record<string, any>) {
     this.winstonLogger.info(message, { context, ...meta });
-    this.sendToPostHog('info', message, context, meta);
-    this.sendToOpenTelemetry('INFO', message, context, meta);
   }
 
   error(message: string, trace?: string, context?: string, meta?: Record<string, any>) {
     this.winstonLogger.error(message, { context, trace, ...meta });
-    this.sendToPostHog('error', message, context, { ...meta, trace });
-    this.sendToOpenTelemetry('ERROR', message, context, { ...meta, trace });
   }
 
   warn(message: string, context?: string, meta?: Record<string, any>) {
     this.winstonLogger.warn(message, { context, ...meta });
-    this.sendToPostHog('warn', message, context, meta);
-    this.sendToOpenTelemetry('WARN', message, context, meta);
   }
 
   debug(message: string, context?: string, meta?: Record<string, any>) {
     this.winstonLogger.debug(message, { context, ...meta });
-    this.sendToPostHog('debug', message, context, meta);
-    this.sendToOpenTelemetry('DEBUG', message, context, meta);
   }
 
   verbose(message: string, context?: string, meta?: Record<string, any>) {
     this.winstonLogger.verbose(message, { context, ...meta });
-    this.sendToPostHog('verbose', message, context, meta);
-    this.sendToOpenTelemetry('TRACE', message, context, meta);
-  }
-
-  private sendToPostHog(
-    level: string,
-    message: string,
-    context?: string,
-    meta?: Record<string, any>,
-  ) {
-    if (!this.posthog) return;
-
-    const eventName = `backend_${level}`;
-    const properties = {
-      message,
-      context: context || 'unknown',
-      level,
-      environment: process.env.NODE_ENV || 'development',
-      ...meta,
-    };
-
-    // Enviar para PostHog (sem userId específico para logs do sistema)
-    this.posthog.capture({
-      distinctId: 'backend-server',
-      event: eventName,
-      properties,
-    });
-  }
-
-  private sendToOpenTelemetry(
-    severityText: string,
-    message: string,
-    context?: string,
-    meta?: Record<string, any>,
-  ) {
-    if (!this.otelLogger) return;
-
-    try {
-      this.otelLogger.emit({
-        severityText,
-        body: message,
-        attributes: {
-          context: context || 'unknown',
-          ...meta,
-        },
-      });
-    } catch (error) {
-      // Silenciosamente falha se OpenTelemetry não estiver disponível
-    }
-  }
-
-  async onModuleDestroy() {
-    if (this.posthog) {
-      await this.posthog.shutdown();
-    }
   }
 }

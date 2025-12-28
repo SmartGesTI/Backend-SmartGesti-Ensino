@@ -103,43 +103,41 @@ export class PermissionsService {
     tenantId: string,
     schoolId?: string,
   ): Promise<Record<string, string[]>> {
-    const permissions: Record<string, string[]> = {};
-
-    // 1. Verificar se é proprietário (acesso total)
     const isOwner = await this.isOwner(supabaseId, tenantId);
+    return this.getUserPermissionsWithOwner(supabaseId, tenantId, schoolId, isOwner);
+  }
+
+  /**
+   * Versão otimizada que aceita isOwner pré-calculado para evitar queries duplicadas
+   */
+  async getUserPermissionsWithOwner(
+    supabaseId: string,
+    tenantId: string,
+    schoolId: string | undefined,
+    isOwner: boolean,
+  ): Promise<Record<string, string[]>> {
+    // Proprietário tem acesso total
     if (isOwner) {
       return { '*': ['*'] };
     }
 
-    // 2. Converter Auth0 ID para UUID
+    const permissions: Record<string, string[]> = {};
+
+    // Converter Auth0 ID para UUID
     const userId = await this.getUserUuidFromSupabase(supabaseId);
     if (!userId) {
-      // Usuário não existe no banco ainda
       return {};
     }
 
-    // 3. Obter permissões dos cargos
-    const rolePermissions = await this.getRolePermissions(
-      userId,
-      tenantId,
-      schoolId,
-    );
+    // Obter permissões dos cargos, grupos e específicas em paralelo
+    const [rolePermissions, groupPermissions, specificPermissions] = await Promise.all([
+      this.getRolePermissions(userId, tenantId, schoolId),
+      this.getGroupPermissions(userId, tenantId, schoolId),
+      this.getSpecificPermissions(userId, tenantId, schoolId),
+    ]);
+
     this.mergePermissions(permissions, rolePermissions);
-
-    // 4. Obter permissões dos grupos
-    const groupPermissions = await this.getGroupPermissions(
-      userId,
-      tenantId,
-      schoolId,
-    );
     this.mergePermissions(permissions, groupPermissions);
-
-    // 5. Obter permissões específicas do usuário
-    const specificPermissions = await this.getSpecificPermissions(
-      userId,
-      tenantId,
-      schoolId,
-    );
     this.mergePermissions(permissions, specificPermissions);
 
     return permissions;
@@ -327,15 +325,27 @@ export class PermissionsService {
     tenantId: string,
     schoolId?: string,
   ): Promise<number> {
-    // Proprietário tem hierarquia 0
     const isOwner = await this.isOwner(supabaseId, tenantId);
+    return this.getUserHighestHierarchyWithOwner(supabaseId, tenantId, schoolId, isOwner);
+  }
+
+  /**
+   * Versão otimizada que aceita isOwner pré-calculado
+   */
+  async getUserHighestHierarchyWithOwner(
+    supabaseId: string,
+    tenantId: string,
+    schoolId: string | undefined,
+    isOwner: boolean,
+  ): Promise<number> {
+    // Proprietário tem hierarquia 0
     if (isOwner) {
       return 0;
     }
 
     const userId = await this.getUserUuidFromSupabase(supabaseId);
     if (!userId) {
-      return 999; // Sem usuário = hierarquia mais baixa
+      return 999;
     }
 
     const query = this.supabase.getClient()
@@ -353,7 +363,7 @@ export class PermissionsService {
     const { data, error } = await query.single();
 
     if (error || !data) {
-      return 999; // Sem cargo = hierarquia mais baixa
+      return 999;
     }
 
     return (data as any).roles?.hierarchy_level || 999;

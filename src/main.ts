@@ -2,12 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { LoggerService } from './common/logger/logger.service';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
-import { initializeOpenTelemetry, shutdownOpenTelemetry } from './common/logger/opentelemetry.config';
-
-// Inicializar OpenTelemetry antes de criar a aplicação
-const posthogToken = process.env.POSTHOG_API_KEY;
-const posthogHost = process.env.POSTHOG_HOST;
-initializeOpenTelemetry(posthogToken, posthogHost);
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -38,13 +32,11 @@ async function bootstrap() {
   // Graceful shutdown
   process.on('SIGTERM', async () => {
     logger.log('SIGTERM received, shutting down gracefully', 'Bootstrap');
-    shutdownOpenTelemetry();
     await app.close();
   });
 
   process.on('SIGINT', async () => {
     logger.log('SIGINT received, shutting down gracefully', 'Bootstrap');
-    shutdownOpenTelemetry();
     await app.close();
   });
 }
