@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { LoggerService } from './common/logger/logger.service';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { initializeOpenTelemetry, shutdownOpenTelemetry } from './common/logger/opentelemetry.config';
 
 // Inicializar OpenTelemetry antes de criar a aplicação
@@ -15,6 +16,9 @@ async function bootstrap() {
 
   const logger = app.get(LoggerService);
   app.useLogger(logger);
+
+  // Adicionar filtro global de exceções para capturar TODOS os erros
+  app.useGlobalFilters(new AllExceptionsFilter(logger));
 
   // CORS configuration
   app.enableCors({

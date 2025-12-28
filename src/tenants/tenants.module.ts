@@ -4,9 +4,15 @@ import { TenantsService } from './tenants.service';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { LoggerModule } from '../common/logger/logger.module';
 import { AuthModule } from '../auth/auth.module';
+import { OwnersModule } from '../owners/owners.module';
 
 @Module({
-  imports: [SupabaseModule, LoggerModule, forwardRef(() => AuthModule)],
+  imports: [
+    SupabaseModule,
+    LoggerModule,
+    forwardRef(() => AuthModule),
+    forwardRef(() => OwnersModule),
+  ],
   controllers: [TenantsController],
   providers: [TenantsService],
   exports: [TenantsService],

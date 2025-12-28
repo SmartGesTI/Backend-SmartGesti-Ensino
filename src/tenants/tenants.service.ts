@@ -1,9 +1,10 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ConflictException, Inject, forwardRef } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoggerService } from '../common/logger/logger.service';
 import { Tenant } from '../common/types';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
+import { OwnersService } from '../owners/owners.service';
 
 @Injectable()
 export class TenantsService {
@@ -15,6 +16,8 @@ export class TenantsService {
   constructor(
     private supabaseService: SupabaseService,
     private logger: LoggerService,
+    @Inject(forwardRef(() => OwnersService))
+    private ownersService: OwnersService,
   ) {}
 
   private get supabase() {
@@ -226,7 +229,43 @@ export class TenantsService {
       subdomain: tenant.subdomain,
     });
 
-    return tenant;
+    // Adicionar proprietário se fornecido
+    let ownerData: any = null;
+    if (createTenantDto.owner_email || createTenantDto.owner_auth0_id) {
+      try {
+        const ownerEmail = createTenantDto.owner_email;
+        const ownershipLevel = createTenantDto.ownership_level || 'owner';
+
+        if (ownerEmail) {
+          ownerData = await this.ownersService.addOwner(
+            tenant.id,
+            ownerEmail,
+            ownershipLevel,
+          );
+
+          this.logger.log('Owner added to tenant during creation', 'TenantsService', {
+            tenantId: tenant.id,
+            ownerEmail,
+            ownerId: ownerData?.id,
+          });
+        }
+      } catch (error: any) {
+        // Log erro mas não falhar a criação do tenant
+        this.logger.error(
+          `Failed to add owner during tenant creation: ${error.message}`,
+          undefined,
+          'TenantsService',
+          {
+            tenantId: tenant.id,
+            ownerEmail: createTenantDto.owner_email,
+            error: error.message,
+          },
+        );
+      }
+    }
+
+    // Retornar tenant com owner se foi adicionado
+    return ownerData ? { ...tenant, owner: ownerData } as any : tenant;
   }
 
   async updateTenant(id: string, updateTenantDto: UpdateTenantDto): Promise<Tenant> {

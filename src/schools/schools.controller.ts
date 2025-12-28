@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, UseGuards, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { SchoolsService } from './schools.service';
 import { JwtAuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -8,6 +8,8 @@ import { School } from '../common/types';
 import { UsersService } from '../users/users.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { LoggerService } from '../common/logger/logger.service';
+import { CreateSchoolDto } from './dto/create-school.dto';
+import { UpdateSchoolDto } from './dto/update-school.dto';
 
 @Controller('schools')
 @UseGuards(JwtAuthGuard)
@@ -115,5 +117,85 @@ export class SchoolsController {
 
     await this.schoolsService.setCurrentSchool(dbUser.id, body.school_id, tenant.id);
     return { success: true };
+  }
+
+  @Post()
+  async createSchool(
+    @CurrentUser() user: CurrentUserPayload,
+    @Subdomain() subdomain: string | undefined,
+    @Body() createSchoolDto: CreateSchoolDto,
+  ): Promise<School> {
+    if (!subdomain) {
+      throw new BadRequestException('Subdomain is required');
+    }
+
+    // Buscar tenant pelo subdomain
+    const tenant = await this.tenantsService.getTenantBySubdomain(subdomain);
+    if (!tenant) {
+      throw new BadRequestException('Tenant not found');
+    }
+
+    this.logger.log('Creating school', 'SchoolsController', {
+      tenantId: tenant.id,
+      subdomain,
+      name: createSchoolDto.name,
+      userSub: user.sub,
+    });
+
+    return this.schoolsService.createSchool(tenant.id, createSchoolDto);
+  }
+
+  @Put(':id')
+  async updateSchool(
+    @CurrentUser() user: CurrentUserPayload,
+    @Subdomain() subdomain: string | undefined,
+    @Param('id') schoolId: string,
+    @Body() updateSchoolDto: UpdateSchoolDto,
+  ): Promise<School> {
+    if (!subdomain) {
+      throw new BadRequestException('Subdomain is required');
+    }
+
+    // Buscar tenant pelo subdomain
+    const tenant = await this.tenantsService.getTenantBySubdomain(subdomain);
+    if (!tenant) {
+      throw new BadRequestException('Tenant not found');
+    }
+
+    this.logger.log('Updating school', 'SchoolsController', {
+      schoolId,
+      tenantId: tenant.id,
+      subdomain,
+      userSub: user.sub,
+    });
+
+    return this.schoolsService.updateSchool(schoolId, tenant.id, updateSchoolDto);
+  }
+
+  @Delete(':id')
+  async deleteSchool(
+    @CurrentUser() user: CurrentUserPayload,
+    @Subdomain() subdomain: string | undefined,
+    @Param('id') schoolId: string,
+  ): Promise<{ message: string }> {
+    if (!subdomain) {
+      throw new BadRequestException('Subdomain is required');
+    }
+
+    // Buscar tenant pelo subdomain
+    const tenant = await this.tenantsService.getTenantBySubdomain(subdomain);
+    if (!tenant) {
+      throw new BadRequestException('Tenant not found');
+    }
+
+    this.logger.log('Deleting school', 'SchoolsController', {
+      schoolId,
+      tenantId: tenant.id,
+      subdomain,
+      userSub: user.sub,
+    });
+
+    await this.schoolsService.deleteSchool(schoolId, tenant.id);
+    return { message: `School with id '${schoolId}' deleted successfully` };
   }
 }

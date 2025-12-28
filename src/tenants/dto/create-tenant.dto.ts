@@ -19,4 +19,9 @@ export class CreateTenantDto {
   endereco_cidade?: string;
   endereco_estado?: string;
   endereco_cep?: string;
+  
+  // Campos para adicionar proprietário automaticamente
+  owner_email?: string;
+  owner_auth0_id?: string;
+  ownership_level?: 'owner' | 'co-owner';
 }

@@ -1,34 +1,25 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy, StrategyOptions } from 'passport-jwt';
-import { passportJwtSecret } from 'jwks-rsa';
+import { ExtractJwt, Strategy } from 'passport-jwt';
 import { CurrentUserPayload } from '../../common/decorators/current-user.decorator';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private configService: ConfigService) {
-    const auth0Domain = configService.get<string>('AUTH0_DOMAIN');
-    const auth0Audience = configService.get<string>('AUTH0_AUDIENCE');
+    const supabaseJwtSecret = configService.get<string>('SUPABASE_JWT_SECRET');
 
-    if (!auth0Domain || !auth0Audience) {
-      throw new Error('Missing Auth0 environment variables');
+    if (!supabaseJwtSecret) {
+      throw new Error('Missing SUPABASE_JWT_SECRET environment variable');
     }
 
-    const strategyOptions: StrategyOptions = {
+    // Esta estratégia valida apenas tokens HS256 (legacy)
+    // Tokens ES256 são validados no JwtAuthGuard antes de chegar aqui
+    super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKeyProvider: passportJwtSecret({
-        cache: true,
-        rateLimit: true,
-        jwksRequestsPerMinute: 5,
-        jwksUri: `https://${auth0Domain}/.well-known/jwks.json`,
-      }),
-      audience: auth0Audience,
-      issuer: `https://${auth0Domain}/`,
-      algorithms: ['RS256'],
-    };
-
-    super(strategyOptions);
+      secretOrKey: supabaseJwtSecret,
+      algorithms: ['HS256'], // Apenas HS256 (legacy)
+    });
   }
 
   async validate(payload: any): Promise<CurrentUserPayload> {
@@ -39,20 +30,30 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Invalid token payload: missing sub');
     }
 
-    // Auth0 tokens may have email in different locations or not at all for M2M tokens
-    // For user tokens from Google, email is usually present
-    const email = payload.email || payload['https://smartgesti.com/email'] || '';
-    const name = payload.name || payload['https://smartgesti.com/name'] || '';
-    const picture = payload.picture || payload['https://smartgesti.com/picture'] || '';
+    // Payload do Supabase tem estrutura diferente do Auth0
+    // sub é o UUID do usuário (não mais auth0|xxx)
+    const userId = payload.sub;
+    const email = payload.email || '';
+    const name = payload.user_metadata?.full_name || payload.user_metadata?.name || '';
+    const picture = payload.user_metadata?.avatar_url || payload.user_metadata?.picture || '';
+    
+    // Verificar se email está confirmado
+    // Para usuários OAuth (Google, etc), considerar email como verificado
+    // pois o provedor OAuth já faz essa verificação
+    const hasEmailConfirmed = payload.email_confirmed_at !== null && payload.email_confirmed_at !== undefined;
+    const isOAuthUser = payload.app_metadata?.provider !== 'email' || 
+                       payload.user_metadata?.provider === 'google' ||
+                       payload.iss?.includes('accounts.google.com');
+    const emailVerified = hasEmailConfirmed || isOAuthUser;
 
-    console.log('[JwtStrategy] Token validated successfully for:', payload.sub);
+    console.log('[JwtStrategy] Token validated successfully for:', userId);
 
     return {
-      sub: payload.sub,
+      sub: userId, // UUID do Supabase
       email: email,
       name: name,
       picture: picture,
-      email_verified: payload.email_verified ?? false,
+      email_verified: emailVerified,
     };
   }
 }
