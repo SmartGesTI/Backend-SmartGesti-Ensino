@@ -228,6 +228,69 @@ export class SchoolsService {
   }
 
   async addUserToSchool(userId: string, schoolId: string, role: string = 'user'): Promise<void> {
+    // IMPORTANTE: Validações de regras de negócio
+    // 1. Verificar se usuário é owner - owners podem estar em múltiplas escolas
+    const { data: school } = await this.supabase
+      .from('schools')
+      .select('tenant_id')
+      .eq('id', schoolId)
+      .single();
+
+    if (!school) {
+      throw new NotFoundException(`Escola não encontrada: ${schoolId}`);
+    }
+
+    const tenantId = school.tenant_id;
+    const isOwner = await this.usersService.isOwner(userId, tenantId);
+
+    // 2. Se não é owner, verificar se é aluno
+    if (!isOwner) {
+      // Verificar se usuário tem role "student" (aluno)
+      const { data: userRoles } = await this.supabase
+        .from('user_roles')
+        .select('roles!inner(slug)')
+        .eq('user_id', userId)
+        .eq('tenant_id', tenantId);
+
+      // Tratar tanto array quanto objeto retornado pelo join
+      const hasStudentRole = userRoles?.some((ur: any) => {
+        const rolesData = Array.isArray(ur.roles) ? ur.roles[0] : ur.roles;
+        return rolesData?.slug === 'student';
+      });
+
+      // 3. Se é aluno, verificar se já está em outra escola
+      if (hasStudentRole) {
+        const { data: existingSchools } = await this.supabase
+          .from('school_members')
+          .select('school_id')
+          .eq('user_id', userId);
+
+        if (existingSchools && existingSchools.length > 0) {
+          // Aluno já está em uma escola, verificar se é a mesma
+          const isSameSchool = existingSchools.some(
+            (es: any) => es.school_id === schoolId
+          );
+
+          if (!isSameSchool) {
+            this.logger.error(
+              'Aluno tentou ser adicionado a múltiplas escolas',
+              undefined,
+              'SchoolsService',
+              {
+                userId,
+                schoolId,
+                existingSchools: existingSchools.map((es: any) => es.school_id),
+              },
+            );
+            throw new ForbiddenException(
+              'Alunos só podem estar vinculados a uma escola. Remova o aluno da escola atual antes de adicioná-lo a outra.',
+            );
+          }
+        }
+      }
+    }
+
+    // 4. Adicionar usuário à escola
     const { error } = await this.supabase.from('school_members').insert({
       user_id: userId,
       school_id: schoolId,

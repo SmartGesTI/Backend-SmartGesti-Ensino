@@ -62,6 +62,70 @@ export class UsersService {
       throw new Error('Email não verificado. Verifique seu email antes de continuar.');
     }
 
+    // IMPORTANTE: Verificar se o email está em tenant_owners ANTES de buscar/criar usuário
+    // Isso permite vincular automaticamente owners mesmo quando o usuário ainda não existe
+    let ownerTenantId: string | undefined;
+    
+    // Buscar tenant pelo email em tenant_owners (via join com users)
+    // Isso funciona porque quando criamos o tenant, já adicionamos o owner pelo email
+    const { data: ownershipByEmail } = await this.supabase
+      .from('tenant_owners')
+      .select('tenant_id, users!inner(id, email)')
+      .eq('users.email', supabaseUser.email)
+      .limit(1)
+      .maybeSingle();
+    
+    if (ownershipByEmail) {
+      ownerTenantId = ownershipByEmail.tenant_id;
+      // users pode ser um array ou objeto dependendo do join, tratar como array
+      const usersData = Array.isArray(ownershipByEmail.users) 
+        ? ownershipByEmail.users[0] 
+        : ownershipByEmail.users;
+      
+      this.logger.log(
+        'User email found in tenant_owners, will link automatically',
+        'UsersService',
+        {
+          email: supabaseUser.email,
+          ownerTenantId,
+          existingUserId: usersData?.id,
+        },
+      );
+    }
+
+    // Buscar usuário existente por auth0_id (armazena UUID do Supabase) OU email
+    // NOTA: Campo auth0_id mantido no schema para compatibilidade, mas agora armazena Supabase UUID
+    const { data: users, error: searchError } = await this.supabase
+      .from('users')
+      .select('*')
+      .or(`auth0_id.eq.${supabaseUser.id},email.eq.${supabaseUser.email}`)
+      .limit(2);
+    
+    const existingUser = users?.[0];
+    
+    // Se usuário já existe e não encontramos owner pelo email, verificar pelo user_id
+    if (existingUser && !ownerTenantId) {
+      const { data: ownership } = await this.supabase
+        .from('tenant_owners')
+        .select('tenant_id')
+        .eq('user_id', existingUser.id)
+        .limit(1)
+        .maybeSingle();
+      
+      if (ownership) {
+        ownerTenantId = ownership.tenant_id;
+        this.logger.log(
+          'User is owner of a tenant, will link automatically',
+          'UsersService',
+          {
+            userId: existingUser.id,
+            email: supabaseUser.email,
+            ownerTenantId,
+          },
+        );
+      }
+    }
+
     // Se subdomain fornecido, buscar tenant
     let tenantId: string | undefined;
     if (subdomain) {
@@ -72,14 +136,28 @@ export class UsersService {
         this.logger.warn(`Tenant not found for subdomain: ${subdomain}`, 'UsersService');
       }
     }
-
-    // Buscar usuário existente por auth0_id (armazena UUID do Supabase) OU email
-    // NOTA: Campo auth0_id mantido no schema para compatibilidade, mas agora armazena Supabase UUID
-    const { data: users, error: searchError } = await this.supabase
-      .from('users')
-      .select('*')
-      .or(`auth0_id.eq.${supabaseUser.id},email.eq.${supabaseUser.email}`)
-      .limit(2);
+    
+    // Priorizar tenant do owner se encontrado
+    if (ownerTenantId) {
+      // Se subdomain foi fornecido e é diferente do tenant do owner, validar
+      if (tenantId && tenantId !== ownerTenantId) {
+        this.logger.warn(
+          'Owner attempting to access different tenant',
+          'UsersService',
+          {
+            email: supabaseUser.email,
+            ownerTenantId,
+            requestedTenantId: tenantId,
+            subdomain,
+          },
+        );
+        // Owner deve acessar seu próprio tenant
+        tenantId = ownerTenantId;
+      } else if (!tenantId) {
+        // Se não foi fornecido subdomain, usar o tenant do owner
+        tenantId = ownerTenantId;
+      }
+    }
 
     if (searchError) {
       this.logger.error(
@@ -89,8 +167,6 @@ export class UsersService {
         { supabaseUserId: supabaseUser.id, email: supabaseUser.email },
       );
     }
-
-    const existingUser = users?.[0];
 
     // Verificar se há duplicatas (múltiplos usuários com mesmo email)
     if (users && users.length > 1) {
@@ -151,16 +227,20 @@ export class UsersService {
       }
 
       // Se tenant encontrado e usuário não tem tenant, associar (primeira vez)
+      // OU se é owner e não tem tenant vinculado, vincular automaticamente
       if (tenantId && !existingUser.tenant_id) {
         updateData.tenant_id = tenantId;
         this.logger.log(
-          'User linked to tenant for first time',
+          ownerTenantId 
+            ? 'Owner automatically linked to tenant (no approval needed)'
+            : 'User linked to tenant for first time',
           'UsersService',
           {
             userId: existingUser.id,
             email: existingUser.email,
             tenantId,
             subdomain,
+            isOwner: !!ownerTenantId,
           },
         );
       }
@@ -181,6 +261,9 @@ export class UsersService {
       return user;
     } else {
       // Criar novo usuário
+      // IMPORTANTE: Se é owner, já vincular ao tenant automaticamente (sem precisar de aprovação)
+      const finalTenantId = tenantId || ownerTenantId;
+      
       const { data: newUser, error } = await this.supabase
         .from('users')
         .insert({
@@ -190,7 +273,7 @@ export class UsersService {
           avatar_url: supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || supabaseUser.picture,
           email_verified: supabaseUser.email_verified ?? false,
           role: 'user',
-          tenant_id: tenantId,
+          tenant_id: finalTenantId, // Já vincula se for owner
           ai_context: {},
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -204,13 +287,17 @@ export class UsersService {
 
       // Log de atividade
       await this.logActivity(newUser.id, 'user_created', 'user', newUser.id, {
-        description: `Usuário ${supabaseUser.email} criado no sistema`,
+        description: ownerTenantId 
+          ? `Owner ${supabaseUser.email} criado e vinculado automaticamente ao tenant`
+          : `Usuário ${supabaseUser.email} criado no sistema`,
       });
 
       this.logger.log('User created successfully', 'UsersService', {
         userId: newUser.id,
         email: supabaseUser.email,
-        tenantId,
+        tenantId: finalTenantId,
+        isOwner: !!ownerTenantId,
+        autoLinked: !!ownerTenantId,
       });
 
       const user = newUser as User;
@@ -533,33 +620,64 @@ export class UsersService {
       user.full_name.trim().split(' ').length >= 2
     );
 
+    // IMPORTANTE: Verificar se é owner ANTES de verificar outras coisas
+    // Isso permite detectar owners mesmo sem tenant_id vinculado ainda
+    let isOwnerStatus = false;
+    let ownerTenantId: string | undefined;
+    
+    if (user.tenant_id) {
+      // Se tem tenant_id, verificar ownership normalmente
+      isOwnerStatus = await this.isOwner(user.id, user.tenant_id);
+      ownerTenantId = user.tenant_id;
+    } else {
+      // Se não tem tenant_id, verificar se é owner de algum tenant pelo user_id
+      const { data: ownership } = await this.supabase
+        .from('tenant_owners')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+      
+      if (ownership) {
+        isOwnerStatus = true;
+        ownerTenantId = ownership.tenant_id;
+        this.logger.log(
+          'User is owner but tenant_id not linked yet',
+          'UsersService',
+          {
+            userId: user.id,
+            email: user.email,
+            ownerTenantId,
+          },
+        );
+      }
+    }
+
+    // Usar tenant_id do owner se encontrado
+    const effectiveTenantId = user.tenant_id || ownerTenantId;
+
     // Verificar se tem escolas
     let hasSchools = false;
-    if (user.tenant_id) {
+    if (effectiveTenantId) {
       const { data: schools } = await this.supabase
         .from('schools')
         .select('id')
-        .eq('tenant_id', user.tenant_id)
+        .eq('tenant_id', effectiveTenantId)
         .limit(1);
       hasSchools = !!schools && schools.length > 0;
     }
 
     // Verificar se tem roles
     let hasRoles = false;
-    if (user.tenant_id) {
+    if (effectiveTenantId) {
       const { data: roles } = await this.supabase
         .from('user_roles')
         .select('id')
         .eq('user_id', user.id)
-        .eq('tenant_id', user.tenant_id)
+        .eq('tenant_id', effectiveTenantId)
         .limit(1);
       hasRoles = !!roles && roles.length > 0;
     }
-
-    // Verificar se é owner
-    const isOwnerStatus = user.tenant_id 
-      ? await this.isOwner(user.id, user.tenant_id)
-      : false;
 
     // Determinar status com prioridade
     let status: 'active' | 'pending' | 'blocked' | 'incomplete_profile' | 'email_unverified' = 'pending';
@@ -571,7 +689,11 @@ export class UsersService {
     } else if (!hasCompletedProfile) {
       status = 'incomplete_profile';
       message = 'Complete seu cadastro com nome e sobrenome';
-    } else if (hasTenant && (hasSchools || hasRoles || isOwnerStatus)) {
+    } else if (isOwnerStatus) {
+      // IMPORTANTE: Owners sempre têm status 'active', mesmo sem escolas
+      status = 'active';
+      message = 'Owner - acesso completo';
+    } else if (effectiveTenantId && (hasSchools || hasRoles)) {
       status = 'active';
     } else {
       status = 'pending';
@@ -579,7 +701,7 @@ export class UsersService {
     }
 
     return {
-      hasTenant,
+      hasTenant: !!effectiveTenantId, // Retornar true se for owner mesmo sem tenant_id vinculado
       hasSchools,
       hasRoles,
       isOwner: isOwnerStatus,
