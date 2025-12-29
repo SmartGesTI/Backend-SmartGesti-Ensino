@@ -5,40 +5,61 @@ import {
   Query,
   UseGuards,
   Request,
+  Res,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { PermissionsService } from './permissions.service';
+import { RolesService } from '../roles/roles.service';
 import { JwtAuthGuard } from '../auth/auth.guard';
 
 @Controller('permissions')
 @UseGuards(JwtAuthGuard)
 export class PermissionsController {
-  constructor(private readonly permissionsService: PermissionsService) {}
+  constructor(
+    private readonly permissionsService: PermissionsService,
+    @Inject(forwardRef(() => RolesService))
+    private readonly rolesService: RolesService,
+  ) {}
 
   /**
-   * Retorna todas as permissões do usuário autenticado
+   * Retorna todas as permissões e roles do usuário autenticado
+   * UNIFICADO: Agora retorna permissões e roles em uma única requisição
    */
   @Get('user')
   async getUserPermissions(
     @Request() req: any,
+    @Res() res: Response,
     @Headers('x-tenant-id') tenantId: string,
     @Query('schoolId') schoolId?: string,
   ) {
     const userId = req.user.sub; // Supabase user ID (UUID)
 
+    // Buscar permissions_version do usuário
+    const permissionsVersion = await this.permissionsService.getUserPermissionsVersion(userId);
+
     // Chamar isOwner apenas uma vez e reutilizar
     const isOwner = await this.permissionsService.isOwner(userId, tenantId);
 
-    // Usar versões otimizadas que aceitam isOwner pré-calculado
-    const [permissions, hierarchy] = await Promise.all([
+    // Buscar permissions, hierarchy e roles em paralelo
+    const [permissions, hierarchy, roles] = await Promise.all([
       this.permissionsService.getUserPermissionsWithOwner(userId, tenantId, schoolId, isOwner),
       this.permissionsService.getUserHighestHierarchyWithOwner(userId, tenantId, schoolId, isOwner),
+      this.rolesService.getUserRoles(userId, tenantId, schoolId).catch(() => []), // Falha silenciosa para roles
     ]);
 
-    return {
+    // Adicionar header com permissions_version
+    if (permissionsVersion) {
+      res.setHeader('X-Permissions-Version', permissionsVersion);
+    }
+
+    return res.json({
       permissions,
       isOwner,
       hierarchy,
-    };
+      roles, // Agora incluído na resposta
+    });
   }
 
   /**

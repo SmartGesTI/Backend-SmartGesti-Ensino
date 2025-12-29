@@ -3,9 +3,12 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoggerService } from '../common/logger/logger.service';
+import { PermissionsService } from '../permissions/permissions.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { AssignRoleDto } from './dto/assign-role.dto';
@@ -15,6 +18,8 @@ export class RolesService {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly logger: LoggerService,
+    @Inject(forwardRef(() => PermissionsService))
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   /**
@@ -214,6 +219,18 @@ export class RolesService {
       throw new BadRequestException('Erro ao atribuir cargo');
     }
 
+    // Invalidar versão de permissões do usuário (invalida cache no frontend)
+    await this.permissionsService
+      .invalidateUserPermissionsVersion(user_id)
+      .catch((err) => {
+        this.logger.warn(
+          'Erro ao invalidar permissions_version',
+          'RolesService',
+          { error: err.message, userId: user_id },
+        );
+        // Não bloquear operação se falhar
+      });
+
     return data;
   }
 
@@ -244,6 +261,18 @@ export class RolesService {
     if (error) {
       throw new BadRequestException('Erro ao remover cargo');
     }
+
+    // Invalidar versão de permissões do usuário (invalida cache no frontend)
+    await this.permissionsService
+      .invalidateUserPermissionsVersion(userId)
+      .catch((err) => {
+        this.logger.warn(
+          'Erro ao invalidar permissions_version',
+          'RolesService',
+          { error: err.message, userId },
+        );
+        // Não bloquear operação se falhar
+      });
 
     return { message: 'Cargo removido com sucesso' };
   }

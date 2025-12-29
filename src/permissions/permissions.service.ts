@@ -368,4 +368,52 @@ export class PermissionsService {
 
     return (data as any).roles?.hierarchy_level || 999;
   }
+
+  /**
+   * Atualiza permissions_version do usuário (invalida cache no frontend)
+   * Chamado sempre que permissões/roles do usuário mudam
+   * @param userId - UUID do usuário (não Supabase ID)
+   * @returns Novo UUID gerado para permissions_version
+   */
+  async invalidateUserPermissionsVersion(userId: string): Promise<string> {
+    // Usar crypto.randomUUID() para gerar novo UUID
+    const crypto = await import('crypto');
+    const newVersion = crypto.randomUUID();
+
+    const { error } = await this.supabase.getClient()
+      .from('users')
+      .update({ permissions_version: newVersion })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('[PermissionsService] Erro ao atualizar permissions_version:', error);
+      throw new Error(`Erro ao invalidar versão de permissões: ${error.message}`);
+    }
+
+    return newVersion;
+  }
+
+  /**
+   * Obtém permissions_version do usuário
+   * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
+   * @returns permissions_version UUID ou null se não encontrado
+   */
+  async getUserPermissionsVersion(supabaseId: string): Promise<string | null> {
+    const userId = await this.getUserUuidFromSupabase(supabaseId);
+    if (!userId) {
+      return null;
+    }
+
+    const { data, error } = await this.supabase.getClient()
+      .from('users')
+      .select('permissions_version')
+      .eq('id', userId)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return data.permissions_version;
+  }
 }
