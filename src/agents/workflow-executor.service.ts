@@ -295,19 +295,11 @@ export class WorkflowExecutorService {
 
     const nodeType = node.id.split('-').slice(0, -1).join('-') || node.id;
 
-    // Instruções: preferir registry interno por nodeType (mais estável que o frontend)
-    const registryInstructions = this.getDefaultInstructions(nodeType);
-    const configInstructions = node.data.config?.instructions;
-
-    const baseInstructions =
-      registryInstructions?.trim()?.length
-        ? registryInstructions
-        : configInstructions?.trim()?.length
-          ? configInstructions
-          : '';
+    // Instruções vêm do frontend (config.instructions)
+    const baseInstructions = node.data.config?.instructions?.trim() || '';
 
     if (!baseInstructions) {
-      throw new Error(`Instruções não encontradas para o nó de IA: ${nodeType}`);
+      throw new Error(`Instruções não configuradas para o nó de IA: ${node.data.label}. Configure as instruções no painel de configuração do nó.`);
     }
 
     // Prioridade: 1) modelo da execução, 2) modelo do nó, 3) default
@@ -336,6 +328,7 @@ export class WorkflowExecutorService {
     // Para nós de documento: extrair texto real do(s) arquivo(s) (PDF/DOCX/XLSX)
     const shouldExtractDocuments =
       nodeType.startsWith('analyze-document') ||
+      nodeType.startsWith('analyze-curriculum') ||
       nodeType.startsWith('extract-information');
 
     let extractedDocInfo: { text: string; filesProcessed: number } | null = null;
@@ -543,78 +536,6 @@ export class WorkflowExecutorService {
       fileName,
       mimeType,
     };
-  }
-
-  private getDefaultInstructions(nodeType: string): string {
-    if (nodeType.startsWith('analyze-text')) {
-      return `ENTRADA: Você recebe UMA STRING com texto OU um JSON (stringificado) vindo do nó anterior. Se receber JSON, extraia o conteúdo na seguinte ordem de prioridade: 1) text 2) content 3) extracted_text 4) summary. Se nada existir, use o JSON inteiro como texto (string).
-PROCESSAMENTO: Analise o texto e identifique sentimento, tópicos e entidades nomeadas.
-SAÍDA: Retorne JSON no formato:
-{
-  "analysis": {
-    "sentiment": "positivo|negativo|neutro",
-    "topics": ["tópico 1", "tópico 2"],
-    "keywords": ["palavra1", "palavra2"]
-  },
-  "entities": {
-    "people": [],
-    "places": [],
-    "organizations": []
-  }
-}`;
-    }
-
-    if (nodeType.startsWith('analyze-document')) {
-      return `ENTRADA: Você recebe UMA STRING com o texto extraído de um documento (PDF/DOCX/XLSX) OU um JSON (stringificado). Se receber JSON, extraia o conteúdo na seguinte ordem de prioridade: 1) extracted_text 2) text 3) content 4) summary. Se nada existir, use o JSON inteiro como texto (string).
-PROCESSAMENTO: Analise o conteúdo do documento. Gere um resumo, identifique seções, pontos-chave, datas/valores e informações relevantes.
-SAÍDA: Retorne JSON no formato:
-{
-  "document": {
-    "summary": "...",
-    "key_points": ["..."],
-    "important_dates": ["..."],
-    "important_values": ["..."]
-  },
-  "sections": [
-    { "title": "...", "content": "..." }
-  ]
-}`;
-    }
-
-    if (nodeType.startsWith('extract-information')) {
-      return `ENTRADA: Você recebe UMA STRING com texto OU um JSON (stringificado) vindo do nó anterior.
-PROCESSAMENTO: Extraia informações estruturadas do texto. Foque em datas, valores, nomes, emails, telefones, CPFs/CNPJs, endereços e outros campos úteis.
-SAÍDA: Retorne JSON no formato:
-{
-  "extracted_data": {},
-  "confidence": 0.0,
-  "fields_found": []
-}`;
-    }
-
-    if (nodeType.startsWith('classify-data')) {
-      return `ENTRADA: Você recebe UMA STRING com texto OU um JSON (stringificado) vindo do nó anterior.
-PROCESSAMENTO: Classifique o conteúdo em uma categoria curta (1-3 palavras) e estime a confiança.
-SAÍDA: Retorne JSON no formato:
-{
-  "category": "...",
-  "confidence": 0.0,
-  "details": {
-    "reasoning": "...",
-    "matched_keywords": []
-  }
-}`;
-    }
-
-    if (nodeType.startsWith('generate-summary')) {
-      return `ENTRADA: Você recebe UMA STRING com texto OU um JSON (stringificado) vindo do nó anterior. Se receber JSON, extraia o conteúdo na seguinte ordem de prioridade: 1) markdown 2) text 3) content 4) extracted_text 5) summary. Se nada existir, use o JSON inteiro como texto (string).
-PROCESSAMENTO: Produza um relatório bem escrito e estruturado, em Português (pt-BR), com formatação em Markdown. O resultado será convertido para PDF.
-REGRAS: Use APENAS Markdown (sem HTML). Use 1 título principal com #, subseções com ## e listas com -. Não use blocos de código. Não inclua JSON no corpo do Markdown.
-ESTRUTURA: # Relatório\n## Resumo\n(parágrafo)\n\n## Pontos-chave\n- ...\n\n## Observações\n- ...
-SAÍDA: Retorne APENAS JSON válido, sem texto extra. Formato: {"title":"Relatório","markdown":"..."}`;
-    }
-
-    return '';
   }
 
   /**
