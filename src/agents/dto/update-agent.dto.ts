@@ -14,10 +14,11 @@ import {
   AgentVisibility,
   AgentCategory,
   AgentDifficulty,
+  AgentStatus,
 } from './create-agent.dto';
 
 // Re-exportar os enums para facilitar o uso
-export { AgentType, AgentVisibility, AgentCategory, AgentDifficulty } from './create-agent.dto';
+export { AgentType, AgentVisibility, AgentCategory, AgentDifficulty, AgentStatus } from './create-agent.dto';
 
 export class UpdateAgentDto {
   @IsString()
@@ -91,6 +92,9 @@ export class UpdateAgentDto {
   @IsOptional()
   is_active?: boolean;
 
+  /**
+   * @deprecated Campo depreciado, usar status e visibility
+   */
   @IsBoolean()
   @IsOptional()
   is_template?: boolean;
@@ -99,7 +103,20 @@ export class UpdateAgentDto {
   @IsOptional()
   school_id?: string;
 
+  @IsEnum(AgentStatus)
+  @IsOptional()
+  status?: AgentStatus;
+
   @IsBoolean()
   @IsOptional()
   use_auto_layout?: boolean;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  best_uses?: string[];
+
+  @IsString()
+  @IsOptional()
+  how_it_helps?: string;
 }

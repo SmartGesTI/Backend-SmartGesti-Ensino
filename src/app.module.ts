@@ -12,6 +12,7 @@ import { RolesModule } from './roles/roles.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { OwnersModule } from './owners/owners.module';
 import { AgentsModule } from './agents/agents.module';
+import { TagsModule } from './tags/tags.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { CacheModule } from './common/cache/cache.module';
 import { LoggingInterceptor } from './common/logger/logger.interceptor';
@@ -35,6 +36,7 @@ import { TenantAccessGuard } from './auth/guards/tenant-access.guard';
     InvitationsModule,
     OwnersModule,
     AgentsModule,
+    TagsModule,
   ],
   controllers: [AppController],
   providers: [

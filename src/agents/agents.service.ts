@@ -72,6 +72,9 @@ export class AgentsService {
       type?: string;
       is_template?: boolean;
       search?: string;
+      status?: string;
+      visibility?: string;
+      myAgents?: boolean;
     },
     permContext?: PermissionContextResult,
   ) {
@@ -137,6 +140,20 @@ export class AgentsService {
       query.or(
         `name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`,
       );
+    }
+
+    // Novos filtros para status e visibility
+    if (filters?.status) {
+      query.eq('status', filters.status);
+    }
+
+    if (filters?.visibility) {
+      query.eq('visibility', filters.visibility);
+    }
+
+    // Se myAgents=true, filtrar apenas agentes do usuário atual
+    if (filters?.myAgents) {
+      query.eq('created_by', userId);
     }
 
     const { data: agents, error } = await query.order('created_at', {
@@ -302,10 +319,13 @@ export class AgentsService {
         category_tags: dto.category_tags || [],
         type: dto.type || 'private',
         visibility: dto.visibility || 'private',
+        status: dto.status || 'draft', // Novos agentes começam como rascunho
         settings: dto.settings || {},
         is_active: dto.is_active !== undefined ? dto.is_active : true,
         is_template: dto.is_template || false,
         use_auto_layout: dto.use_auto_layout !== undefined ? dto.use_auto_layout : true,
+        best_uses: dto.best_uses || [],
+        how_it_helps: dto.how_it_helps || '',
         usage_count: 0,
       })
       .select()
@@ -338,11 +358,15 @@ export class AgentsService {
     const agent = await this.findOne(id, supabaseId, tenantId, schoolId);
 
     // Verificar permissão para editar
-    const userPermissions = await this.permissionsService.getUserPermissions(
+    const permContext = await this.permissionsService.getPermissionContext(
       supabaseId,
       tenantId,
       schoolId,
     );
+
+    if (!permContext) {
+      throw new BadRequestException('Usuário não encontrado');
+    }
 
     const userRoles = await this.rolesService
       .getUserRoles(supabaseId, tenantId, schoolId)
@@ -351,12 +375,13 @@ export class AgentsService {
     const canEdit = await this.agentsPermissionsService.canEdit(
       agent,
       userId,
-      userPermissions,
+      permContext.permissions,
       userRoles.map((r: any) => ({
         id: r.role_id || r.roles?.id,
         slug: r.roles?.slug || '',
       })),
       tenantId,
+      permContext.isOwner, // Owner da instituição tem acesso total
     );
 
     if (!canEdit) {
@@ -389,6 +414,9 @@ export class AgentsService {
     if (dto.is_active !== undefined) updateData.is_active = dto.is_active;
     if (dto.is_template !== undefined) updateData.is_template = dto.is_template;
     if (dto.use_auto_layout !== undefined) updateData.use_auto_layout = dto.use_auto_layout;
+    if (dto.best_uses !== undefined) updateData.best_uses = dto.best_uses;
+    if (dto.how_it_helps !== undefined) updateData.how_it_helps = dto.how_it_helps;
+    if (dto.status !== undefined) updateData.status = dto.status;
 
     const { data: updatedAgent, error } = await this.supabase
       .getClient()

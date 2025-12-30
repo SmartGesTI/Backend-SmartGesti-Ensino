@@ -42,6 +42,9 @@ export class AgentsController {
     @Query('type') type?: string,
     @Query('is_template') is_template?: string,
     @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('visibility') visibility?: string,
+    @Query('myAgents') myAgents?: string,
   ) {
     const supabaseId = req.user.sub;
     // Usar contexto de permissões já calculado pelo guard
@@ -51,6 +54,9 @@ export class AgentsController {
       type,
       is_template: is_template === 'true',
       search,
+      status,
+      visibility,
+      myAgents: myAgents === 'true',
     }, permContext);
   }
 

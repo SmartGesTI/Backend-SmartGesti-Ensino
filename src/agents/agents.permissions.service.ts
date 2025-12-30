@@ -10,11 +10,21 @@ export interface AgentAccess {
   reason?: string;
 }
 
+/**
+ * Interface do agente para verificação de permissões
+ * 
+ * Visibilidade simplificada:
+ * - public: Todos da escola podem ver e usar
+ * - public_collaborative: Público + qualquer um edita, só dono apaga
+ * - private: Só o dono vê e edita
+ */
 interface Agent {
   id: string;
   created_by: string | null;
-  type: 'public_school' | 'public_editable' | 'private' | 'restricted';
-  visibility: 'public' | 'private' | 'restricted';
+  status?: 'draft' | 'published';
+  visibility: 'public' | 'public_collaborative' | 'private';
+  // Campos depreciados (mantidos para compatibilidade)
+  type?: 'public_school' | 'public_editable' | 'private' | 'restricted';
 }
 
 @Injectable()
@@ -26,6 +36,14 @@ export class AgentsPermissionsService {
 
   /**
    * Verifica acesso completo ao agente
+   * 
+   * Lógica simplificada de permissões:
+   * - Owner da instituição: acesso total a tudo
+   * - Dono do agente: acesso total ao seu agente
+   * - public: todos veem e usam
+   * - public_collaborative: todos veem, usam e editam, só dono apaga
+   * - private: só dono vê e edita
+   * - draft: só dono vê (rascunhos não são públicos)
    */
   async checkAgentAccess(
     agent: Agent,
@@ -34,34 +52,45 @@ export class AgentsPermissionsService {
     userRoles: Array<{ id: string; slug: string }>,
     tenantId: string,
     schoolId?: string,
+    isOwnerOfTenant?: boolean,
   ): Promise<AgentAccess> {
-    // 1. Verificar se é dono
-    const isOwner = agent.created_by === userId;
-    
-    // 2. public_school nunca editável (nem pelo dono)
-    if (agent.type === 'public_school') {
-      if (isOwner) {
-        return {
-          canView: true,
-          canExecute: true,
-          canEdit: false,
-          canDelete: false,
-          reason: 'Agente público da escola - protegido',
-        };
-      }
+    // 1. Owner da instituição tem acesso total
+    if (isOwnerOfTenant) {
+      return {
+        canView: true,
+        canExecute: true,
+        canEdit: true,
+        canDelete: true,
+        reason: 'Owner da instituição',
+      };
     }
 
-    // 3. Se é dono, acesso total (exceto public_school já tratado)
+    // 2. Verificar se é dono do agente
+    const isOwner = agent.created_by === userId;
+    
+    // 3. Dono tem acesso total ao seu agente
     if (isOwner) {
       return {
         canView: true,
         canExecute: true,
-        canEdit: agent.type !== 'public_school',
+        canEdit: true,
         canDelete: true,
+        reason: 'Dono do agente',
       };
     }
 
-    // 4. Verificar bloqueios explícitos
+    // 4. Rascunhos só são visíveis para o dono
+    if (agent.status === 'draft') {
+      return {
+        canView: false,
+        canExecute: false,
+        canEdit: false,
+        canDelete: false,
+        reason: 'Rascunho - visível apenas para o dono',
+      };
+    }
+
+    // 5. Verificar bloqueios explícitos
     const restrictions = await this.getAgentRestrictions(
       agent.id,
       userId,
@@ -78,129 +107,87 @@ export class AgentsPermissionsService {
       };
     }
 
-    // 5. Verificar Permissões RBAC Globais
-    const rbacPerms = {
-      canViewAgents:
-        this.checkPermission(userPermissions, 'agents', 'read') ||
-        this.checkPermission(userPermissions, 'agents', 'view'),
-      canExecuteAgents: this.checkPermission(
-        userPermissions,
-        'agents',
-        'execute',
-      ),
-      canEditAgents:
-        this.checkPermission(userPermissions, 'agents', 'update') ||
-        this.checkPermission(userPermissions, 'agents', 'manage'),
-      canDeleteAgents:
-        this.checkPermission(userPermissions, 'agents', 'delete') ||
-        this.checkPermission(userPermissions, 'agents', 'manage'),
-    };
+    // 6. Verificar Permissões RBAC Globais (pre-requisito)
+    const hasRbacView =
+      this.checkPermission(userPermissions, 'agents', 'read') ||
+      this.checkPermission(userPermissions, 'agents', 'view');
+    
+    const hasRbacExecute = this.checkPermission(userPermissions, 'agents', 'execute');
+    
+    const hasRbacEdit =
+      this.checkPermission(userPermissions, 'agents', 'update') ||
+      this.checkPermission(userPermissions, 'agents', 'manage');
 
-    // Se não tem permissão RBAC básica para ver agentes, negar acesso
-    if (!rbacPerms.canViewAgents) {
+    if (!hasRbacView) {
       return {
         canView: false,
         canExecute: false,
         canEdit: false,
         canDelete: false,
-        reason: 'Sem permissão para visualizar agentes',
+        reason: 'Sem permissão RBAC para visualizar agentes',
       };
     }
 
-    // 6. Verificar tipo de agente
-    let finalAccess: AgentAccess;
+    // 7. Aplicar regras de visibilidade simplificadas
+    // Normalizar visibility (compatibilidade com valores antigos)
+    const visibility = this.normalizeVisibility(agent);
 
-    switch (agent.type) {
-      case 'public_school':
-        // Público da escola - view + execute apenas
-        finalAccess = {
-          canView: rbacPerms.canViewAgents,
-          canExecute: rbacPerms.canExecuteAgents,
+    switch (visibility) {
+      case 'public':
+        // Todos da escola veem e usam, só dono edita
+        return {
+          canView: true,
+          canExecute: hasRbacExecute,
           canEdit: false,
           canDelete: false,
-          reason: 'Agente público da escola - apenas visualização e execução',
+          reason: 'Agente público',
         };
-        break;
 
-      case 'public_editable':
-        // Público editável - qualquer um pode editar (se tiver RBAC)
-        finalAccess = {
-          canView: rbacPerms.canViewAgents,
-          canExecute: rbacPerms.canExecuteAgents,
-          canEdit: rbacPerms.canEditAgents,
+      case 'public_collaborative':
+        // Todos veem, usam e editam, só dono apaga
+        return {
+          canView: true,
+          canExecute: hasRbacExecute,
+          canEdit: hasRbacEdit,
           canDelete: false,
+          reason: 'Agente colaborativo',
         };
-        break;
 
       case 'private':
-        // Particular - apenas dono pode editar
-        if (agent.visibility === 'private') {
-          finalAccess = {
-            canView: false,
-            canExecute: false,
-            canEdit: false,
-            canDelete: false,
-            reason: 'Agente particular - acesso restrito ao dono',
-          };
-        } else {
-          // visibility = 'public' - outros podem ver/executar, mas não editar
-          finalAccess = {
-            canView: rbacPerms.canViewAgents,
-            canExecute: rbacPerms.canExecuteAgents,
-            canEdit: false,
-            canDelete: false,
-            reason: 'Agente particular - edição apenas pelo dono',
-          };
-        }
-        break;
-
-      case 'restricted':
-        // Verificar permissões específicas
-        const agentPerms = await this.getAgentPermissions(
-          agent.id,
-          userId,
-          userRoles.map((r) => r.id),
-        );
-
-        finalAccess = {
-          canView:
-            agentPerms?.canView !== undefined
-              ? agentPerms.canView
-              : rbacPerms.canViewAgents,
-          canExecute:
-            agentPerms?.canExecute !== undefined
-              ? agentPerms.canExecute
-              : rbacPerms.canExecuteAgents,
-          canEdit:
-            agentPerms?.canEdit !== undefined
-              ? agentPerms.canEdit
-              : rbacPerms.canEditAgents,
-          canDelete: false,
-        };
-        break;
-
       default:
-        finalAccess = {
+        // Só dono vê (já verificado acima, se chegou aqui não é dono)
+        return {
           canView: false,
           canExecute: false,
           canEdit: false,
           canDelete: false,
-          reason: 'Tipo de agente desconhecido',
+          reason: 'Agente privado',
         };
     }
+  }
 
-    // 7. Aplicar bloqueios
-    if (restrictions.blockView) {
-      finalAccess.canView = false;
+  /**
+   * Normaliza visibility para o novo sistema
+   * Compatibilidade com valores antigos: public_school, public_editable, restricted
+   */
+  private normalizeVisibility(agent: Agent): 'public' | 'public_collaborative' | 'private' {
+    // Se já tem o novo formato
+    if (agent.visibility === 'public_collaborative') {
+      return 'public_collaborative';
     }
-    if (restrictions.blockExecute) {
-      finalAccess.canExecute = false;
+    
+    // Compatibilidade com type antigo
+    if (agent.type === 'public_editable') {
+      return 'public_collaborative';
     }
-    if (restrictions.blockEdit) {
-      finalAccess.canEdit = false;
+    
+    // public_school e public -> public
+    if (agent.visibility === 'public' || agent.type === 'public_school') {
+      return 'public';
     }
-
-    return finalAccess;
+    
+    // Tudo mais é privado
+    return 'private';
   }
 
   /**
@@ -212,6 +199,7 @@ export class AgentsPermissionsService {
     userPermissions: Record<string, string[]>,
     userRoles: Array<{ id: string; slug: string }>,
     tenantId: string,
+    isOwnerOfTenant?: boolean,
   ): Promise<boolean> {
     const access = await this.checkAgentAccess(
       agent,
@@ -219,6 +207,8 @@ export class AgentsPermissionsService {
       userPermissions,
       userRoles,
       tenantId,
+      undefined,
+      isOwnerOfTenant,
     );
     return access.canView;
   }
@@ -232,6 +222,7 @@ export class AgentsPermissionsService {
     userPermissions: Record<string, string[]>,
     userRoles: Array<{ id: string; slug: string }>,
     tenantId: string,
+    isOwnerOfTenant?: boolean,
   ): Promise<boolean> {
     const access = await this.checkAgentAccess(
       agent,
@@ -239,6 +230,8 @@ export class AgentsPermissionsService {
       userPermissions,
       userRoles,
       tenantId,
+      undefined,
+      isOwnerOfTenant,
     );
     return access.canExecute;
   }
@@ -252,6 +245,7 @@ export class AgentsPermissionsService {
     userPermissions: Record<string, string[]>,
     userRoles: Array<{ id: string; slug: string }>,
     tenantId: string,
+    isOwnerOfTenant?: boolean,
   ): Promise<boolean> {
     const access = await this.checkAgentAccess(
       agent,
@@ -259,6 +253,8 @@ export class AgentsPermissionsService {
       userPermissions,
       userRoles,
       tenantId,
+      undefined,
+      isOwnerOfTenant,
     );
     return access.canEdit;
   }
@@ -271,12 +267,19 @@ export class AgentsPermissionsService {
     userId: string,
     userPermissions: Record<string, string[]>,
     tenantId: string,
+    isOwnerOfTenant?: boolean,
   ): Promise<boolean> {
-    // Apenas dono ou quem tem agents: delete
+    // Owner da instituição pode deletar qualquer agente
+    if (isOwnerOfTenant) {
+      return true;
+    }
+    
+    // Dono do agente pode deletar
     if (agent.created_by === userId) {
       return true;
     }
 
+    // Quem tem permissão de delete pode deletar
     return (
       this.checkPermission(userPermissions, 'agents', 'delete') ||
       this.checkPermission(userPermissions, 'agents', 'manage')

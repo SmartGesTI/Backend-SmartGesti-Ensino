@@ -13,6 +13,9 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
+/**
+ * @deprecated Use AgentVisibility instead
+ */
 export enum AgentType {
   PUBLIC_SCHOOL = 'public_school',
   PUBLIC_EDITABLE = 'public_editable',
@@ -20,10 +23,26 @@ export enum AgentType {
   RESTRICTED = 'restricted',
 }
 
+/**
+ * Visibilidade simplificada do agente
+ * - public: Todos da escola podem ver e usar
+ * - public_collaborative: Público + qualquer um edita, só dono apaga
+ * - private: Só o dono vê e edita
+ */
 export enum AgentVisibility {
   PUBLIC = 'public',
+  PUBLIC_COLLABORATIVE = 'public_collaborative',
   PRIVATE = 'private',
-  RESTRICTED = 'restricted',
+}
+
+/**
+ * Status do agente
+ * - draft: Rascunho (em criação/edição)
+ * - published: Publicado (visível conforme visibilidade)
+ */
+export enum AgentStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
 }
 
 export enum AgentCategory {
@@ -111,6 +130,9 @@ export class CreateAgentDto {
   @IsOptional()
   is_active?: boolean;
 
+  /**
+   * @deprecated Campo depreciado, usar status e visibility
+   */
   @IsBoolean()
   @IsOptional()
   is_template?: boolean;
@@ -119,7 +141,20 @@ export class CreateAgentDto {
   @IsOptional()
   school_id?: string;
 
+  @IsEnum(AgentStatus)
+  @IsOptional()
+  status?: AgentStatus;
+
   @IsBoolean()
   @IsOptional()
   use_auto_layout?: boolean;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  best_uses?: string[];
+
+  @IsString()
+  @IsOptional()
+  how_it_helps?: string;
 }
