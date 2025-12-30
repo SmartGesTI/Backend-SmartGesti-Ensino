@@ -295,6 +295,7 @@ export class AgentsService {
         settings: dto.settings || {},
         is_active: dto.is_active !== undefined ? dto.is_active : true,
         is_template: dto.is_template || false,
+        use_auto_layout: dto.use_auto_layout !== undefined ? dto.use_auto_layout : true,
         usage_count: 0,
       })
       .select()
@@ -377,6 +378,7 @@ export class AgentsService {
     if (dto.settings !== undefined) updateData.settings = dto.settings;
     if (dto.is_active !== undefined) updateData.is_active = dto.is_active;
     if (dto.is_template !== undefined) updateData.is_template = dto.is_template;
+    if (dto.use_auto_layout !== undefined) updateData.use_auto_layout = dto.use_auto_layout;
 
     const { data: updatedAgent, error } = await this.supabase
       .getClient()

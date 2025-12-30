@@ -98,4 +98,8 @@ export class UpdateAgentDto {
   @IsString()
   @IsOptional()
   school_id?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  use_auto_layout?: boolean;
 }
