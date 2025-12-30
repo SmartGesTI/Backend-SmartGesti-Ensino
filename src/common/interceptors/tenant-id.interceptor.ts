@@ -6,15 +6,16 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { SupabaseService } from '../../supabase/supabase.service';
+import { TenantCacheService } from '../cache/tenant-cache.service';
 
 /**
  * Interceptor que converte subdomain para UUID do tenant
  * Modifica o header x-tenant-id automaticamente
+ * USA CACHE para evitar queries repetidas
  */
 @Injectable()
 export class TenantIdInterceptor implements NestInterceptor {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(private readonly tenantCache: TenantCacheService) {}
 
   async intercept(
     context: ExecutionContext,
@@ -30,39 +31,17 @@ export class TenantIdInterceptor implements NestInterceptor {
     });
 
     if (tenantIdOrSubdomain) {
-      // Verificar se já é um UUID válido
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      // Usar cache para converter subdomain -> UUID
+      const tenantId = await this.tenantCache.getTenantId(tenantIdOrSubdomain);
       
-      if (!uuidRegex.test(tenantIdOrSubdomain)) {
-        console.log('[TenantIdInterceptor] Convertendo subdomain para UUID:', tenantIdOrSubdomain);
-        
-        // Se não for UUID, assumir que é subdomain e buscar UUID
-        const { data: tenant, error } = await this.supabase.getClient()
-          .from('tenants')
-          .select('id')
-          .eq('subdomain', tenantIdOrSubdomain)
-          .single();
-
-        if (error || !tenant) {
-          console.error('[TenantIdInterceptor] Erro ao buscar tenant:', {
-            subdomain: tenantIdOrSubdomain,
-            error: error?.message,
-          });
-          throw new BadRequestException(
-            `Tenant não encontrado: ${tenantIdOrSubdomain}`
-          );
-        }
-
-        console.log('[TenantIdInterceptor] Tenant encontrado, convertendo:', {
-          subdomain: tenantIdOrSubdomain,
-          uuid: tenant.id,
-        });
-
-        // Substituir o header com o UUID
-        request.headers['x-tenant-id'] = tenant.id;
-      } else {
-        console.log('[TenantIdInterceptor] TenantId já é UUID, mantendo:', tenantIdOrSubdomain);
+      if (!tenantId) {
+        throw new BadRequestException(
+          `Tenant não encontrado: ${tenantIdOrSubdomain}`
+        );
       }
+
+      // Substituir o header com o UUID (pode ser o mesmo se já era UUID)
+      request.headers['x-tenant-id'] = tenantId;
     }
 
     console.log('[TenantIdInterceptor] Header final x-tenant-id:', request.headers['x-tenant-id']);

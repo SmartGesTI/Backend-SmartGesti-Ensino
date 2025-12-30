@@ -5,20 +5,23 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PermissionsService } from '../permissions.service';
-import { SupabaseService } from '../../supabase/supabase.service';
+import { PermissionsService, PermissionContextResult } from '../permissions.service';
+import { TenantCacheService } from '../../common/cache/tenant-cache.service';
 import {
   PERMISSION_KEY,
   PermissionRequirement,
 } from '../decorators/require-permission.decorator';
 import { ROLE_KEY } from '../decorators/require-permission.decorator';
 
+// Chave para armazenar contexto de permissões na request
+export const PERMISSION_CONTEXT_KEY = 'permissionContext';
+
 @Injectable()
 export class PermissionGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private permissionsService: PermissionsService,
-    private supabase: SupabaseService,
+    private tenantCache: TenantCacheService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -60,44 +63,50 @@ export class PermissionGuard implements CanActivate {
       throw new ForbiddenException('Tenant não especificado');
     }
 
-    // Se o tenantId não é UUID, converter subdomain para UUID
-    // (fallback caso o TenantIdInterceptor não tenha executado)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(tenantId)) {
-      console.log('[PermissionGuard] Convertendo subdomain para UUID (fallback):', tenantId);
-      const { data: tenant, error } = await this.supabase
-        .getClient()
-        .from('tenants')
-        .select('id')
-        .eq('subdomain', tenantId)
-        .single();
+    // Converter subdomain para UUID usando cache (Guard executa ANTES do Interceptor)
+    const resolvedTenantId = await this.tenantCache.getTenantId(tenantId);
+    if (!resolvedTenantId) {
+      throw new ForbiddenException(`Tenant não encontrado: ${tenantId}`);
+    }
+    
+    // Atualizar tenantId e header para uso posterior
+    tenantId = resolvedTenantId;
+    request.headers['x-tenant-id'] = resolvedTenantId;
 
-      if (error || !tenant) {
-        console.error('[PermissionGuard] Erro ao buscar tenant:', {
-          subdomain: tenantId,
-          error: error?.message,
-        });
-        throw new ForbiddenException(`Tenant não encontrado: ${tenantId}`);
-      }
+    // OTIMIZAÇÃO: Obter contexto de permissões de uma vez (com cache)
+    const supabaseId = user.sub;
+    if (!supabaseId) {
+      throw new ForbiddenException('Token inválido: sub não encontrado');
+    }
 
-      tenantId = tenant.id;
-      // Atualizar o header também para que outros guards/interceptors vejam o UUID
-      request.headers['x-tenant-id'] = tenant.id;
-      console.log('[PermissionGuard] Subdomain convertido para UUID:', {
-        subdomainOriginal: request.headers['x-tenant-id'],
-        uuid: tenantId,
-      });
+    // Buscar contexto completo (usa cache automaticamente)
+    const permContext = await this.permissionsService.getPermissionContext(
+      supabaseId,
+      tenantId,
+      schoolId,
+    );
+
+    if (!permContext) {
+      throw new ForbiddenException('Usuário não encontrado');
+    }
+
+    // Armazenar contexto na request para uso pelos services
+    request[PERMISSION_CONTEXT_KEY] = permContext;
+
+    console.log('[PermissionGuard] Contexto de permissões:', {
+      userId: permContext.userId,
+      isOwner: permContext.isOwner,
+      hasPermissions: Object.keys(permContext.permissions).length > 0,
+    });
+
+    // Se é owner, permitir acesso imediatamente
+    if (permContext.isOwner) {
+      console.log('[PermissionGuard] Usuário é owner, permitindo acesso imediatamente');
+      return true;
     }
 
     // Verificar cargo específico se necessário
     if (requiredRole) {
-      // user.sub é o UUID do Supabase (supabaseId)
-      const supabaseId = user.sub;
-      
-      if (!supabaseId) {
-        throw new ForbiddenException('Token inválido: sub não encontrado');
-      }
-
       const hasRole = await this.permissionsService.hasRole(
         supabaseId,
         requiredRole,
@@ -106,66 +115,34 @@ export class PermissionGuard implements CanActivate {
       );
 
       if (!hasRole) {
-        // Se não tem o cargo, verificar se é owner (owners têm acesso a tudo)
-        const isOwner = await this.permissionsService.isOwner(supabaseId, tenantId);
-        if (!isOwner) {
-          throw new ForbiddenException(
-            `Cargo '${requiredRole}' necessário para esta ação`,
-          );
-        }
+        throw new ForbiddenException(
+          `Cargo '${requiredRole}' necessário para esta ação`,
+        );
       }
     }
 
     // Verificar permissão específica se necessário
     if (permissionRequirement) {
-      // user.sub é o UUID do Supabase (supabaseId)
-      // user.id pode não existir (depende do guard usado)
-      const supabaseId = user.sub;
-      
-      if (!supabaseId) {
-        throw new ForbiddenException('Token inválido: sub não encontrado');
-      }
+      const { resource, action } = permissionRequirement;
+      const permissions = permContext.permissions;
 
-      // PRIMEIRO: Verificar se é owner (owners têm acesso a tudo)
-      // Isso evita chamar checkPermission desnecessariamente
-      const isOwner = await this.permissionsService.isOwner(supabaseId, tenantId);
-      
+      // Verificar permissão usando dados já carregados
+      const hasPermission = 
+        permissions['*']?.includes('*') ||
+        permissions['*']?.includes(action) ||
+        permissions[resource]?.includes(action) ||
+        permissions[resource]?.includes('*') ||
+        permissions[resource]?.includes('manage');
+
       console.log('[PermissionGuard] Verificando permissão:', {
-        supabaseId,
-        resource: permissionRequirement.resource,
-        action: permissionRequirement.action,
-        tenantId,
-        schoolId,
-        isOwner,
-      });
-
-      if (isOwner) {
-        console.log('[PermissionGuard] Usuário é owner, permitindo acesso imediatamente');
-        return true;
-      }
-
-      const hasPermission = await this.permissionsService.checkPermission(
-        supabaseId,
-        permissionRequirement.resource,
-        permissionRequirement.action,
-        {
-          userId: user.id || supabaseId, // UUID do banco para contexto (fallback para supabaseId)
-          tenantId,
-          schoolId,
-        },
-      );
-
-      console.log('[PermissionGuard] Resultado verificação:', {
+        resource,
+        action,
         hasPermission,
-        supabaseId,
-        resource: permissionRequirement.resource,
-        action: permissionRequirement.action,
-        isOwner,
       });
 
       if (!hasPermission) {
         throw new ForbiddenException(
-          `Permissão negada: ${permissionRequirement.action} em ${permissionRequirement.resource}`,
+          `Permissão negada: ${action} em ${resource}`,
         );
       }
     }

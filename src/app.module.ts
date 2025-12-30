@@ -13,6 +13,7 @@ import { InvitationsModule } from './invitations/invitations.module';
 import { OwnersModule } from './owners/owners.module';
 import { AgentsModule } from './agents/agents.module';
 import { LoggerModule } from './common/logger/logger.module';
+import { CacheModule } from './common/cache/cache.module';
 import { LoggingInterceptor } from './common/logger/logger.interceptor';
 import { TenantIdInterceptor } from './common/interceptors/tenant-id.interceptor';
 import { TenantAccessGuard } from './auth/guards/tenant-access.guard';
@@ -23,6 +24,7 @@ import { TenantAccessGuard } from './auth/guards/tenant-access.guard';
       isGlobal: true,
     }),
     LoggerModule,
+    CacheModule,
     SupabaseModule,
     AuthModule,
     UsersModule,

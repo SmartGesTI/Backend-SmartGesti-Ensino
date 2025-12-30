@@ -18,9 +18,10 @@ import { UpdateAgentDto } from './dto/update-agent.dto';
 import { CreateAgentPermissionDto } from './dto/agent-permission.dto';
 import { CreateAgentRestrictionDto } from './dto/agent-restriction.dto';
 import { JwtAuthGuard } from '../auth/auth.guard';
-import { PermissionGuard } from '../permissions/guards/permission.guard';
+import { PermissionGuard, PERMISSION_CONTEXT_KEY } from '../permissions/guards/permission.guard';
 import { RequirePermission } from '../permissions/decorators/require-permission.decorator';
 import { ExecutionResult } from './workflow-executor.service';
+import { PermissionContextResult } from '../permissions/permissions.service';
 
 @Controller('agents')
 @UseGuards(JwtAuthGuard)
@@ -43,12 +44,14 @@ export class AgentsController {
     @Query('search') search?: string,
   ) {
     const supabaseId = req.user.sub;
+    // Usar contexto de permissões já calculado pelo guard
+    const permContext: PermissionContextResult | undefined = req[PERMISSION_CONTEXT_KEY];
     return this.agentsService.findAll(supabaseId, tenantId, schoolId, {
       category,
       type,
       is_template: is_template === 'true',
       search,
-    });
+    }, permContext);
   }
 
   /**
@@ -117,7 +120,9 @@ export class AgentsController {
     @Headers('x-tenant-id') tenantId: string,
   ) {
     const supabaseId = req.user.sub;
-    return this.agentsService.delete(id, supabaseId, tenantId);
+    // Usar contexto de permissões já calculado pelo guard
+    const permContext: PermissionContextResult | undefined = req[PERMISSION_CONTEXT_KEY];
+    return this.agentsService.delete(id, supabaseId, tenantId, permContext);
   }
 
   /**

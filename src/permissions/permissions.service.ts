@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { PermissionsCacheService, CachedPermissions } from './permissions-cache.service';
 
 export interface PermissionContext {
   tenantId: string;
@@ -7,9 +8,22 @@ export interface PermissionContext {
   userId: string;
 }
 
+/**
+ * Interface para contexto completo de permissões (retornado pelo método otimizado)
+ */
+export interface PermissionContextResult {
+  userId: string;
+  isOwner: boolean;
+  permissions: Record<string, string[]>;
+  permissionsVersion: string;
+}
+
 @Injectable()
 export class PermissionsService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly permissionsCache: PermissionsCacheService,
+  ) {}
 
   /**
    * Converte Supabase ID (armazenado em auth0_id) para UUID do usuário
@@ -31,10 +45,101 @@ export class PermissionsService {
   }
 
   /**
+   * MÉTODO PRINCIPAL OTIMIZADO - Obtém todo o contexto de permissões de uma vez
+   * Usa cache com invalidação por permissions_version
+   * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
+   * @param tenantId - UUID do tenant
+   * @param schoolId - UUID da escola (opcional)
+   * @returns Contexto completo com userId, isOwner, permissions
+   */
+  async getPermissionContext(
+    supabaseId: string,
+    tenantId: string,
+    schoolId?: string,
+  ): Promise<PermissionContextResult | null> {
+    // 1. Buscar dados básicos do usuário (userId e permissionsVersion) - SEMPRE necessário
+    const { data: userData, error: userError } = await this.supabase.getClient()
+      .from('users')
+      .select('id, permissions_version')
+      .eq('auth0_id', supabaseId)
+      .single();
+
+    if (userError || !userData) {
+      console.log('[PermissionsService.getPermissionContext] Usuário não encontrado');
+      return null;
+    }
+
+    const userId = userData.id;
+    const currentVersion = userData.permissions_version || 'default';
+
+    // 2. Verificar cache
+    const cached = this.permissionsCache.get(supabaseId, tenantId, currentVersion);
+    if (cached) {
+      console.log('[PermissionsService.getPermissionContext] Cache HIT');
+      return {
+        userId: cached.userId,
+        isOwner: cached.isOwner,
+        permissions: cached.permissions,
+        permissionsVersion: cached.permissionsVersion,
+      };
+    }
+
+    console.log('[PermissionsService.getPermissionContext] Cache MISS - calculando...');
+
+    // 3. Verificar se é owner
+    const { data: ownerData } = await this.supabase.getClient()
+      .from('tenant_owners')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('tenant_id', tenantId)
+      .single();
+
+    const isOwner = !!ownerData;
+
+    // 4. Obter permissões (se for owner, retorna permissões totais)
+    let permissions: Record<string, string[]>;
+    if (isOwner) {
+      permissions = { '*': ['*'] };
+    } else {
+      // Obter permissões de roles, grupos e específicas em paralelo
+      const [rolePermissions, groupPermissions, specificPermissions] = await Promise.all([
+        this.getRolePermissions(userId, tenantId, schoolId),
+        this.getGroupPermissions(userId, tenantId, schoolId),
+        this.getSpecificPermissions(userId, tenantId, schoolId),
+      ]);
+
+      permissions = {};
+      this.mergePermissions(permissions, rolePermissions);
+      this.mergePermissions(permissions, groupPermissions);
+      this.mergePermissions(permissions, specificPermissions);
+    }
+
+    // 5. Armazenar no cache
+    const result: PermissionContextResult = {
+      userId,
+      isOwner,
+      permissions,
+      permissionsVersion: currentVersion,
+    };
+
+    this.permissionsCache.set(supabaseId, tenantId, result);
+
+    return result;
+  }
+
+  /**
    * Verifica se o usuário é proprietário da instituição
    * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
    */
   async isOwner(supabaseId: string, tenantId: string): Promise<boolean> {
+    // Tentar usar cache primeiro
+    const cached = this.permissionsCache.get(supabaseId, tenantId);
+    if (cached) {
+      console.log('[PermissionsService.isOwner] Usando cache');
+      return cached.isOwner;
+    }
+
+    // Se não tem cache, calcular (mas sem popular cache completo)
     const userId = await this.getUserUuidFromSupabase(supabaseId);
     console.log('[PermissionsService.isOwner] Verificando proprietário:', {
       supabaseId,
@@ -96,6 +201,7 @@ export class PermissionsService {
 
   /**
    * Obtém todas as permissões do usuário (cargos + grupos + específicas)
+   * VERSÃO OTIMIZADA - Usa cache
    * @param supabaseId - UUID do Supabase (armazenado em auth0_id)
    */
   async getUserPermissions(
@@ -103,8 +209,9 @@ export class PermissionsService {
     tenantId: string,
     schoolId?: string,
   ): Promise<Record<string, string[]>> {
-    const isOwner = await this.isOwner(supabaseId, tenantId);
-    return this.getUserPermissionsWithOwner(supabaseId, tenantId, schoolId, isOwner);
+    // Usar método otimizado com cache
+    const context = await this.getPermissionContext(supabaseId, tenantId, schoolId);
+    return context?.permissions || {};
   }
 
   /**

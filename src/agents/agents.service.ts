@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoggerService } from '../common/logger/logger.service';
-import { PermissionsService } from '../permissions/permissions.service';
+import { PermissionsService, PermissionContextResult } from '../permissions/permissions.service';
 import { RolesService } from '../roles/roles.service';
 import { AgentsPermissionsService } from './agents.permissions.service';
 import { WorkflowExecutorService } from './workflow-executor.service';
@@ -61,6 +61,7 @@ export class AgentsService {
 
   /**
    * Lista todos os agentes (filtrado por permissões)
+   * @param permContext - Contexto de permissões já calculado (opcional, para otimização)
    */
   async findAll(
     supabaseId: string,
@@ -72,18 +73,30 @@ export class AgentsService {
       is_template?: boolean;
       search?: string;
     },
+    permContext?: PermissionContextResult,
   ) {
-    const userId = await this.getUserUuidFromSupabase(supabaseId);
-    if (!userId) {
-      throw new BadRequestException('Usuário não encontrado');
-    }
+    // OTIMIZAÇÃO: Usar contexto já calculado se disponível
+    let userId: string;
+    let userPermissions: Record<string, string[]>;
+    let isOwner: boolean;
 
-    // Obter permissões do usuário
-    const userPermissions = await this.permissionsService.getUserPermissions(
-      supabaseId,
-      tenantId,
-      schoolId,
-    );
+    if (permContext) {
+      // Usar dados do contexto (já cacheados)
+      userId = permContext.userId;
+      userPermissions = permContext.permissions;
+      isOwner = permContext.isOwner;
+      this.logger.log('Usando contexto de permissões pré-calculado', 'AgentsService');
+    } else {
+      // Fallback: calcular (isso não deveria acontecer se o guard está funcionando)
+      this.logger.log('Calculando contexto de permissões (fallback)', 'AgentsService');
+      const context = await this.permissionsService.getPermissionContext(supabaseId, tenantId, schoolId);
+      if (!context) {
+        throw new BadRequestException('Usuário não encontrado');
+      }
+      userId = context.userId;
+      userPermissions = context.permissions;
+      isOwner = context.isOwner;
+    }
 
     // Verificar se tem permissão para ver agentes
     const canViewAgents =
@@ -135,11 +148,8 @@ export class AgentsService {
       throw new BadRequestException('Erro ao buscar agentes');
     }
 
-    // Verificar se o usuário é owner - se for, retornar todos os agentes sem verificação individual
-    const isOwner = await this.permissionsService.isOwner(supabaseId, tenantId);
-    
+    // Se owner, retornar todos os agentes diretamente
     if (isOwner) {
-      // Owners têm acesso a tudo, retornar todos os agentes diretamente
       this.logger.log('Usuário é owner, retornando todos os agentes sem verificação individual', 'AgentsService');
       return agents || [];
     }
@@ -403,11 +413,29 @@ export class AgentsService {
 
   /**
    * Deleta um agente
+   * @param permContext - Contexto de permissões já calculado (opcional, para otimização)
    */
-  async delete(id: string, supabaseId: string, tenantId: string) {
-    const userId = await this.getUserUuidFromSupabase(supabaseId);
-    if (!userId) {
-      throw new BadRequestException('Usuário não encontrado');
+  async delete(
+    id: string,
+    supabaseId: string,
+    tenantId: string,
+    permContext?: PermissionContextResult,
+  ) {
+    // OTIMIZAÇÃO: Usar contexto já calculado se disponível
+    let userId: string;
+    let userPermissions: Record<string, string[]>;
+
+    if (permContext) {
+      userId = permContext.userId;
+      userPermissions = permContext.permissions;
+    } else {
+      // Fallback: calcular
+      const context = await this.permissionsService.getPermissionContext(supabaseId, tenantId);
+      if (!context) {
+        throw new BadRequestException('Usuário não encontrado');
+      }
+      userId = context.userId;
+      userPermissions = context.permissions;
     }
 
     // Buscar agente
@@ -423,12 +451,7 @@ export class AgentsService {
       throw new NotFoundException('Agente não encontrado');
     }
 
-    // Verificar permissão para deletar
-    const userPermissions = await this.permissionsService.getUserPermissions(
-      supabaseId,
-      tenantId,
-    );
-
+    // Verificar permissão para deletar (usando permissões já carregadas)
     const canDelete = await this.agentsPermissionsService.canDelete(
       agent,
       userId,
