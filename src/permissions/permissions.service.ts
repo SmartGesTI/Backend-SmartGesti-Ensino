@@ -155,9 +155,24 @@ export class PermissionsService {
   ): Promise<boolean> {
     const { tenantId, schoolId } = context;
 
+    console.log('[PermissionsService.checkPermission] Verificando permissão:', {
+      supabaseId,
+      resource,
+      action,
+      tenantId,
+      schoolId,
+    });
+
     // 1. Verificar se é proprietário
     const isOwner = await this.isOwner(supabaseId, tenantId);
+    console.log('[PermissionsService.checkPermission] Resultado isOwner:', {
+      isOwner,
+      supabaseId,
+      tenantId,
+    });
+    
     if (isOwner) {
+      console.log('[PermissionsService.checkPermission] Usuário é owner, permitindo acesso');
       return true;
     }
 
