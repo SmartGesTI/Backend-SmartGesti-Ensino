@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Tool, ToolContext } from '../../shared/tools/tool.interface';
-import { SitemapService } from '../sitemap/sitemap.service';
+import { SitemapService, UrlContext } from '../sitemap/sitemap.service';
 
 @Injectable()
 export class SitemapTool implements Tool {
@@ -28,13 +28,20 @@ export class SitemapTool implements Tool {
 
   constructor(private readonly sitemapService: SitemapService) {}
 
+  /**
+   * Extrai o contexto de URL do ToolContext
+   */
+  private getUrlContext(context: ToolContext): UrlContext {
+    return {
+      schoolSlug: context.schoolSlug,
+      tenantSubdomain: context.tenantSubdomain,
+      requestOrigin: context.requestOrigin,
+    };
+  }
+
   async execute(params: any, context: ToolContext): Promise<any> {
     const { query, pageId, category } = params;
-    const schoolSlug = (context as any).schoolSlug;
-    const tenantSubdomain = (context as any).tenantSubdomain;
-
-    // Log para debug
-    console.log('[SitemapTool] Executando com schoolSlug:', schoolSlug, 'tenantSubdomain:', tenantSubdomain, 'query:', query);
+    const urlContext = this.getUrlContext(context);
 
     if (!query && !pageId) {
       throw new Error('query ou pageId é obrigatório');
@@ -42,7 +49,7 @@ export class SitemapTool implements Tool {
 
     // Se forneceu pageId, buscar diretamente
     if (pageId) {
-      const pageInfo = this.sitemapService.getPageInfo(pageId, (context as any).schoolSlug, (context as any).tenantSubdomain);
+      const pageInfo = this.sitemapService.getPageInfo(pageId, urlContext.schoolSlug, urlContext);
       
       if (!pageInfo) {
         return {
@@ -76,7 +83,7 @@ export class SitemapTool implements Tool {
           id: p.id,
           name: p.name,
           menuPath: p.menuPath,
-          route: this.sitemapService.getRoute(p.id, (context as any).schoolSlug, true, (context as any).tenantSubdomain),
+          route: this.sitemapService.getRoute(p.id, urlContext.schoolSlug, true, urlContext),
         })),
       };
     }
@@ -94,7 +101,7 @@ export class SitemapTool implements Tool {
 
     // Retornar resultado mais relevante e alguns relacionados
     const topResult = searchResults[0];
-    const pageInfo = this.sitemapService.getPageInfo(topResult.page.id, (context as any).schoolSlug, (context as any).tenantSubdomain);
+    const pageInfo = this.sitemapService.getPageInfo(topResult.page.id, urlContext.schoolSlug, urlContext);
 
     if (!pageInfo) {
       return {
@@ -108,7 +115,7 @@ export class SitemapTool implements Tool {
       id: r.page.id,
       name: r.page.name,
       menuPath: r.page.menuPath,
-      route: this.sitemapService.getRoute(r.page.id, (context as any).schoolSlug, true, (context as any).tenantSubdomain),
+      route: this.sitemapService.getRoute(r.page.id, urlContext.schoolSlug, true, urlContext),
       relevance: r.relevance,
     }));
 
@@ -140,7 +147,7 @@ export class SitemapTool implements Tool {
         id: p.id,
         name: p.name,
         menuPath: p.menuPath,
-        route: this.sitemapService.getRoute(p.id, (context as any).schoolSlug, true, (context as any).tenantSubdomain),
+        route: this.sitemapService.getRoute(p.id, urlContext.schoolSlug, true, urlContext),
       })),
       otherMatches: otherResults.length > 0 ? otherResults : undefined,
       totalResults: searchResults.length,

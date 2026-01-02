@@ -241,6 +241,7 @@ export class AssistantController {
     supabaseId: string;
     schoolSlug?: string;
     tenantSubdomain?: string;
+    requestOrigin?: string;
   }> {
     const supabaseId = req.user.sub;
     const user = await this.usersService.getUserByAuth0Id(supabaseId);
@@ -290,6 +291,12 @@ export class AssistantController {
       console.warn(`[AssistantController] Não foi possível obter tenantSubdomain:`, error?.message || error);
     }
 
+    // Capturar origin da requisição para construção dinâmica de URLs
+    const requestOrigin = req.headers?.origin || req.headers?.referer?.split('/').slice(0, 3).join('/');
+    if (requestOrigin) {
+      console.log(`[AssistantController] requestOrigin capturado: ${requestOrigin}`);
+    }
+
     return {
       userId: user.id,
       tenantId,
@@ -297,6 +304,7 @@ export class AssistantController {
       supabaseId,
       schoolSlug,
       tenantSubdomain,
+      requestOrigin,
     };
   }
 }

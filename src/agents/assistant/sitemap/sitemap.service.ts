@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { SITEMAP_DATA, PAGES_BY_ID, PAGES_BY_ROUTE, MenuItem, MenuSection } from './sitemap.data';
 import { LoggerService } from '../../../common/logger/logger.service';
+import { UrlBuilderService } from '../../shared/url/url-builder.service';
 
 export interface SitemapSearchResult {
   page: MenuItem;
@@ -8,21 +9,22 @@ export interface SitemapSearchResult {
   matchType: 'exact' | 'name' | 'description' | 'feature' | 'useCase';
 }
 
+/**
+ * Contexto de URL para construção dinâmica de links
+ */
+export interface UrlContext {
+  schoolSlug?: string;
+  tenantSubdomain?: string;
+  requestOrigin?: string;
+}
+
 @Injectable()
 export class SitemapService {
-  private readonly baseDomain: string;
-  
-  constructor(private readonly logger: LoggerService) {
-    // Obter domínio base das variáveis de ambiente ou usar padrão
-    this.baseDomain = process.env.FRONTEND_URL || 
-                     process.env.APP_URL || 
-                     process.env.BASE_URL ||
-                     'https://sistema.smartgeski.com';
-    
-    // Remover barra final se houver
-    this.baseDomain = this.baseDomain.replace(/\/$/, '');
-    
-    this.logger.log(`SitemapService inicializado com domínio base: ${this.baseDomain}`, 'SitemapService');
+  constructor(
+    private readonly logger: LoggerService,
+    private readonly urlBuilder: UrlBuilderService,
+  ) {
+    this.logger.log(`SitemapService inicializado`, 'SitemapService');
     this.logger.log(`Site Map carregado: ${SITEMAP_DATA.length} seções, ${PAGES_BY_ID.size} páginas`, 'SitemapService');
   }
 
@@ -41,38 +43,30 @@ export class SitemapService {
   }
 
   /**
-   * Constrói o domínio base baseado no tenantSubdomain e ambiente
+   * Constrói o domínio base usando o UrlBuilderService
+   * @deprecated Use urlBuilder.buildBaseUrl diretamente
    */
-  private buildDomain(tenantSubdomain?: string): string {
-    if (!tenantSubdomain) {
-      // Fallback: usar domínio base configurado
-      return this.baseDomain;
-    }
-    
-    // Detectar ambiente
-    const isProduction = process.env.NODE_ENV === 'production';
-    const frontendUrl = process.env.FRONTEND_URL || process.env.APP_URL;
-    
-    // Se FRONTEND_URL está configurado e contém o padrão de subdomain, usar
-    if (frontendUrl && frontendUrl.includes('*')) {
-      // Substituir * pelo subdomain
-      return frontendUrl.replace('*', tenantSubdomain);
-    }
-    
-    // Construir domínio baseado no ambiente
-    if (isProduction) {
-      // Produção: https://{subdomain}.smartgesti.com.br
-      return `https://${tenantSubdomain}.smartgesti.com.br`;
-    } else {
-      // Desenvolvimento: http://{subdomain}.localhost:5173
-      return `http://${tenantSubdomain}.localhost:5173`;
-    }
+  private buildDomain(urlContext?: UrlContext): string {
+    return this.urlBuilder.buildBaseUrl(
+      urlContext?.tenantSubdomain,
+      urlContext?.requestOrigin,
+    );
   }
 
   /**
    * Gera a rota completa substituindo :slug e adicionando domínio base
+   * 
+   * @param pageId - ID da página
+   * @param schoolSlug - Slug da escola (substitui :slug na rota)
+   * @param includeDomain - Se deve incluir o domínio completo
+   * @param urlContext - Contexto para construção da URL (tenantSubdomain, requestOrigin)
    */
-  getRoute(pageId: string, schoolSlug?: string, includeDomain: boolean = true, tenantSubdomain?: string): string | null {
+  getRoute(
+    pageId: string,
+    schoolSlug?: string,
+    includeDomain: boolean = true,
+    urlContext?: string | UrlContext, // Retrocompatível: aceita string (tenantSubdomain) ou UrlContext
+  ): string | null {
     const page = this.getPageById(pageId);
     if (!page) {
       return null;
@@ -91,10 +85,16 @@ export class SitemapService {
 
     // Adicionar domínio base se solicitado
     if (includeDomain) {
-      // Remover barra inicial se houver
-      const cleanRoute = route.startsWith('/') ? route : `/${route}`;
-      const domain = this.buildDomain(tenantSubdomain);
-      return `${domain}${cleanRoute}`;
+      // Normalizar urlContext para UrlContext
+      const ctx: UrlContext = typeof urlContext === 'string' 
+        ? { tenantSubdomain: urlContext }
+        : urlContext || {};
+      
+      return this.urlBuilder.buildFullUrl(route, {
+        tenantSubdomain: ctx.tenantSubdomain,
+        schoolSlug,
+        requestOrigin: ctx.requestOrigin,
+      });
     }
 
     return route;
@@ -243,8 +243,16 @@ export class SitemapService {
 
   /**
    * Obtém informações completas de uma página incluindo menu pai
+   * 
+   * @param pageId - ID da página
+   * @param schoolSlug - Slug da escola
+   * @param urlContext - Contexto para construção da URL (pode ser string para retrocompat ou UrlContext)
    */
-  getPageInfo(pageId: string, schoolSlug?: string, tenantSubdomain?: string): {
+  getPageInfo(
+    pageId: string,
+    schoolSlug?: string,
+    urlContext?: string | UrlContext,
+  ): {
     page: MenuItem;
     section: MenuSection;
     route: string;
@@ -260,12 +268,20 @@ export class SitemapService {
       return null;
     }
 
+    // Normalizar urlContext
+    const ctx: UrlContext = typeof urlContext === 'string'
+      ? { tenantSubdomain: urlContext }
+      : urlContext || {};
+
     // Sempre usar getRoute para garantir substituição do :slug e adicionar domínio
-    const route = this.getRoute(pageId, schoolSlug, true, tenantSubdomain) || page.routePattern;
+    const route = this.getRoute(pageId, schoolSlug, true, ctx) || page.routePattern;
     
-    // Log para debug
+    // Log para debug apenas se houver problema
     if (route.includes(':slug') && schoolSlug) {
-      console.warn(`[SitemapService] Route ainda contém :slug após getRoute! pageId: ${pageId}, schoolSlug: ${schoolSlug}, route: ${route}`);
+      this.logger.warn(
+        `Route ainda contém :slug após getRoute! pageId: ${pageId}, schoolSlug: ${schoolSlug}`,
+        'SitemapService',
+      );
     }
 
     return {

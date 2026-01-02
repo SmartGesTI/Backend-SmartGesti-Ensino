@@ -8,7 +8,23 @@ import {
   LLMResponse,
   StreamingEvent,
   LLMMessage,
+  ReasoningEffort,
 } from './llm.types';
+
+/**
+ * Mapeamento de modelos para níveis de reasoning suportados
+ */
+const MODEL_REASONING_SUPPORT: Record<string, {
+  supported: ReasoningEffort[];
+  default: ReasoningEffort;
+}> = {
+  'gpt-5-nano': { supported: ['minimal'], default: 'minimal' },
+  'gpt-5-mini': { supported: ['none', 'minimal', 'low', 'medium'], default: 'low' },
+  'gpt-5': { supported: ['none', 'minimal', 'low', 'medium', 'high'], default: 'medium' },
+  'gpt-5.1': { supported: ['none', 'low', 'medium', 'high'], default: 'none' },
+  'gpt-5.2': { supported: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'], default: 'medium' },
+  'gpt-5-pro': { supported: ['high'], default: 'high' },
+};
 
 @Injectable()
 export class OpenAIService {
@@ -58,16 +74,15 @@ export class OpenAIService {
       if (isGPT5Model) {
         body.max_completion_tokens = request.max_tokens ?? modelConfig.maxTokens;
         
-        // Habilitar reasoning_effort para modelos GPT-5
-        // Baseado na documentação oficial: reasoning_effort PODE ser usado junto com tools
-        // Com 'minimal', o modelo pode usar function calls mais prontamente para acelerar respostas
-        // gpt-5-nano suporta apenas 'minimal'
-        if (request.reasoning_effort) {
-          body.reasoning_effort = request.reasoning_effort;
-        } else if (modelToUse === 'gpt-5-nano') {
-          // Para gpt-5-nano, usar 'minimal' (único suportado)
-          // Pode ser usado junto com tools - com minimal, o modelo usa tools mais prontamente
-          body.reasoning_effort = 'minimal';
+        // Configurar reasoning_effort baseado no modelo e preferência do usuário
+        const reasoningEffort = this.getReasoningEffort(modelToUse, request.reasoning_effort);
+        if (reasoningEffort) {
+          body.reasoning_effort = reasoningEffort;
+        }
+        
+        // Suporte a multi-turn com reasoning (GPT 5.2)
+        if (request.previous_response_id) {
+          body.previous_response_id = request.previous_response_id;
         }
       } else {
         body.max_tokens = request.max_tokens ?? modelConfig.maxTokens;
@@ -111,8 +126,13 @@ export class OpenAIService {
           },
         })),
         finish_reason: choice.finish_reason,
-        usage: data.usage,
+        usage: {
+          ...data.usage,
+          reasoning_tokens: data.usage?.reasoning_tokens,
+        },
         model: data.model,
+        response_id: data.id, // ID para multi-turn
+        reasoning: data.reasoning, // Itens de reasoning se disponíveis
       };
     } catch (error: any) {
       this.logger.error(`Erro ao chamar OpenAI API: ${error.message}`, 'OpenAIService');
@@ -185,17 +205,15 @@ export class OpenAIService {
       if (isGPT5Model) {
         body.max_completion_tokens = request.max_tokens ?? modelConfig.maxTokens;
         
-        // Habilitar reasoning_effort para modelos GPT-5
-        // Baseado na documentação oficial: reasoning_effort PODE ser usado junto com tools
-        // Com 'minimal', o modelo pode usar function calls mais prontamente para acelerar respostas
-        // gpt-5-nano suporta apenas 'minimal'
-        if (request.reasoning_effort) {
-          // Se foi explicitamente solicitado, usar
-          body.reasoning_effort = request.reasoning_effort;
-        } else if (model === 'gpt-5-nano') {
-          // Para gpt-5-nano, usar 'minimal' (único suportado)
-          // Pode ser usado junto com tools - com minimal, o modelo usa tools mais prontamente
-          body.reasoning_effort = 'minimal';
+        // Configurar reasoning_effort baseado no modelo e preferência do usuário
+        const reasoningEffort = this.getReasoningEffort(model, request.reasoning_effort);
+        if (reasoningEffort) {
+          body.reasoning_effort = reasoningEffort;
+        }
+        
+        // Suporte a multi-turn com reasoning (GPT 5.2)
+        if (request.previous_response_id) {
+          body.previous_response_id = request.previous_response_id;
         }
       } else {
         body.max_tokens = request.max_tokens ?? modelConfig.maxTokens;
@@ -421,6 +439,46 @@ export class OpenAIService {
       this.logger.error(`Erro no streaming OpenAI: ${error.message}`, 'OpenAIService');
       subject.error(error);
     }
+  }
+
+  /**
+   * Obtém o nível de reasoning apropriado para o modelo
+   * 
+   * @param model - Nome do modelo
+   * @param requested - Nível solicitado (opcional)
+   * @returns Nível de reasoning a ser usado ou undefined se não aplicável
+   */
+  private getReasoningEffort(
+    model: string,
+    requested?: ReasoningEffort,
+  ): ReasoningEffort | undefined {
+    const modelSupport = MODEL_REASONING_SUPPORT[model];
+    
+    if (!modelSupport) {
+      // Modelo não tem configuração de reasoning conhecida
+      // Para modelos GPT-5 genéricos, usar 'medium' como padrão
+      if (model.startsWith('gpt-5')) {
+        return requested || 'medium';
+      }
+      return undefined;
+    }
+    
+    // Se foi solicitado um nível específico, validar se é suportado
+    if (requested) {
+      if (modelSupport.supported.includes(requested)) {
+        return requested;
+      }
+      // Nível solicitado não suportado, usar o mais próximo suportado
+      this.logger.warn(
+        `Reasoning effort '${requested}' não suportado pelo modelo ${model}. ` +
+        `Usando '${modelSupport.default}' (suportados: ${modelSupport.supported.join(', ')})`,
+        'OpenAIService',
+      );
+      return modelSupport.default;
+    }
+    
+    // Usar padrão do modelo
+    return modelSupport.default;
   }
 
   /**

@@ -122,6 +122,7 @@ ${isFirstMessage ? '- Se esta for a primeira mensagem, inclua um campo "conversa
       supabaseId: string;
       schoolSlug?: string;
       tenantSubdomain?: string;
+      requestOrigin?: string;
     },
   ): Promise<AssistantResponse> {
     try {
@@ -178,11 +179,10 @@ ${isFirstMessage ? '- Se esta for a primeira mensagem, inclua um campo "conversa
           tenantId: context.tenantId,
           schoolId: context.schoolId,
           supabaseId: context.supabaseId,
+          schoolSlug: context.schoolSlug,
+          tenantSubdomain: context.tenantSubdomain,
+          requestOrigin: context.requestOrigin,
         };
-
-        // Adicionar schoolSlug e tenantSubdomain ao contexto se disponível
-        (toolContext as any).schoolSlug = context.schoolSlug;
-        (toolContext as any).tenantSubdomain = context.tenantSubdomain;
 
         const toolResults = await this.toolExecutor.executeTools(
           response.tool_calls.map((tc) => ({
@@ -271,6 +271,7 @@ ${isFirstMessage ? '- Se esta for a primeira mensagem, inclua um campo "conversa
       supabaseId: string;
       schoolSlug?: string;
       tenantSubdomain?: string;
+      requestOrigin?: string;
     },
   ): Observable<StreamingEvent> {
     const subject = new Subject<StreamingEvent>();
@@ -293,6 +294,7 @@ ${isFirstMessage ? '- Se esta for a primeira mensagem, inclua um campo "conversa
       supabaseId: string;
       schoolSlug?: string;
       tenantSubdomain?: string;
+      requestOrigin?: string;
     },
     subject: Subject<StreamingEvent>,
   ): Promise<void> {
@@ -712,6 +714,7 @@ Responda APENAS com o título, sem aspas, sem explicações, apenas o título.`;
       supabaseId: string;
       schoolSlug?: string;
       tenantSubdomain?: string;
+      requestOrigin?: string;
     },
     conversationId: string | null, // Pode ser null para primeira mensagem
     accumulatedContent: string,
@@ -744,8 +747,10 @@ Responda APENAS com o título, sem aspas, sem explicações, apenas o título.`;
         tenantId: context.tenantId,
         schoolId: context.schoolId,
         supabaseId: context.supabaseId,
+        schoolSlug: context.schoolSlug,
+        tenantSubdomain: context.tenantSubdomain,
+        requestOrigin: context.requestOrigin,
       };
-      (toolContext as any).schoolSlug = context.schoolSlug;
 
       this.logger.log(`[${reqId}] [AssistantService] Executando tools...`, 'AssistantService');
       // Executar tools

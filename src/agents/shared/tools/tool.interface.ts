@@ -8,6 +8,11 @@ export interface ToolContext {
   schoolId?: string;
   permissions?: any;
   supabaseId?: string;
+  
+  // Contexto de URL - usado para construir links dinamicamente
+  schoolSlug?: string;
+  tenantSubdomain?: string;
+  requestOrigin?: string; // Origin da requisição HTTP (ex: "http://magistral.localhost:5173")
 }
 
 export interface Tool {

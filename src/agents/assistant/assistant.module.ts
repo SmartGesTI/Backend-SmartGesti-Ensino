@@ -16,6 +16,9 @@ import { KnowledgeSearchTool } from './tools/knowledge-search.tool';
 import { ApiInfoTool } from './tools/api-info.tool';
 import { SitemapTool } from './tools/sitemap.tool';
 import { ToolRegistryService } from '../shared/tools/tool-registry.service';
+// Novos serviços refatorados
+import { MessageProcessorService } from './services/message-processor.service';
+import { ToolOrchestratorService } from './services/tool-orchestrator.service';
 
 @Module({
   imports: [
@@ -30,6 +33,9 @@ import { ToolRegistryService } from '../shared/tools/tool-registry.service';
     ConversationService,
     KnowledgeService,
     SitemapService,
+    // Serviços auxiliares
+    MessageProcessorService,
+    ToolOrchestratorService,
     // Tools
     PageInfoTool,
     RouteTool,

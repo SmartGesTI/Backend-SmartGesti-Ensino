@@ -5,6 +5,7 @@ import { OpenAIService } from './llm/openai.service';
 import { LLMService } from './llm/llm.service';
 import { ToolRegistryService } from './tools/tool-registry.service';
 import { ToolExecutorService } from './tools/tool-executor.service';
+import { UrlBuilderService } from './url/url-builder.service';
 
 @Module({
   providers: [
@@ -14,6 +15,7 @@ import { ToolExecutorService } from './tools/tool-executor.service';
     LLMService,
     ToolRegistryService,
     ToolExecutorService,
+    UrlBuilderService,
   ],
   exports: [
     AgentConfigService,
@@ -22,6 +24,7 @@ import { ToolExecutorService } from './tools/tool-executor.service';
     LLMService,
     ToolRegistryService,
     ToolExecutorService,
+    UrlBuilderService,
   ],
 })
 export class SharedModule {}
