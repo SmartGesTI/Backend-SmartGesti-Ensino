@@ -6,6 +6,7 @@ import { WorkflowExecutorService } from './workflow-executor.service';
 import { PdfGeneratorService } from './pdf-generator.service';
 import { MarkdownPdfService } from './markdown-pdf.service';
 import { DocumentTextExtractorService } from './document-text-extractor.service';
+import { AssistantModule } from './assistant/assistant.module';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { RolesModule } from '../roles/roles.module';
@@ -24,6 +25,7 @@ import { SchoolsModule } from '../schools/schools.module';
     forwardRef(() => PermissionsModule),
     forwardRef(() => RolesModule),
     AuthModule,
+    AssistantModule,
   ],
   controllers: [AgentsController],
   providers: [
