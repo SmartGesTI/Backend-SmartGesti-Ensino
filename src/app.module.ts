@@ -15,6 +15,7 @@ import { AgentsModule } from './agents/agents.module';
 import { TagsModule } from './tags/tags.module';
 import { SitesModule } from './sites/sites.module';
 import { RagModule } from './rag/rag.module';
+import { CoreDemoModule } from './ia/core/demo/core-demo.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { CacheModule } from './common/cache/cache.module';
 import { LoggingInterceptor } from './common/logger/logger.interceptor';
@@ -41,6 +42,7 @@ import { TenantAccessGuard } from './auth/guards/tenant-access.guard';
     TagsModule,
     SitesModule,
     RagModule,
+    CoreDemoModule,
   ],
   controllers: [AppController],
   providers: [
