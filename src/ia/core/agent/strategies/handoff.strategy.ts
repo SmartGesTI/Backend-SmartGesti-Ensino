@@ -3,6 +3,7 @@ import { CoreAgent, CoreAgentConfig } from '../agent.types';
 import { CoreTool } from '../../tool/tool.types';
 import { CoreContext } from '../../context/context.types';
 import { tool } from '@openai/agents';
+import { filterModelSettings } from './model-settings.helper';
 
 /**
  * Estratégia Handoff: Delegação completa de conversa
@@ -41,12 +42,18 @@ export class HandoffStrategy {
     }
 
     // Criar agente com handoffs
+    // Filtrar modelSettings para remover temperature se o modelo for GPT-5
+    const filteredModelSettings = filterModelSettings(
+      config.model,
+      config.modelSettings,
+    );
+
     return new Agent<TContext>({
       name: config.name,
       instructions: config.instructions,
       model: config.model,
       tools: tools.length > 0 ? tools : undefined,
-      modelSettings: config.modelSettings,
+      modelSettings: filteredModelSettings,
       inputGuardrails: config.guardrails?.input,
       outputGuardrails: config.guardrails?.output as any,
     });

@@ -2,6 +2,7 @@ import { Agent, tool } from '@openai/agents';
 import { CoreAgent, CoreAgentConfig } from '../agent.types';
 import { CoreTool } from '../../tool/tool.types';
 import { CoreContext } from '../../context/context.types';
+import { filterModelSettings } from './model-settings.helper';
 
 /**
  * Estratégia Manager: Agentes como tools (padrão Manager)
@@ -62,15 +63,18 @@ export class ManagerStrategy {
     }
 
     // Criar agente com tools
+    // Filtrar modelSettings para remover temperature se o modelo for GPT-5
+    const filteredModelSettings = filterModelSettings(config.model, {
+      ...config.modelSettings,
+      parallelToolCalls: config.modelSettings?.parallelToolCalls ?? true,
+    });
+
     return new Agent<TContext>({
       name: config.name,
       instructions: config.instructions,
       model: config.model,
       tools: tools.length > 0 ? tools : undefined,
-      modelSettings: {
-        ...config.modelSettings,
-        parallelToolCalls: config.modelSettings?.parallelToolCalls ?? true,
-      },
+      modelSettings: filteredModelSettings,
       inputGuardrails: config.guardrails?.input,
       outputGuardrails: config.guardrails?.output as any,
     });

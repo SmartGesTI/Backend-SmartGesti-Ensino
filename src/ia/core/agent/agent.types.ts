@@ -31,6 +31,7 @@ export interface CoreAgentConfig<TContext extends CoreContext = CoreContext> {
     maxTokens?: number;
     parallelToolCalls?: boolean;
     toolChoice?: 'auto' | 'required' | 'none' | string;
+    reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
   };
 }
 
@@ -70,5 +71,6 @@ export interface AgentRunOptions<TContext extends CoreContext = CoreContext> {
     maxTokens?: number;
     parallelToolCalls?: boolean;
     toolChoice?: 'auto' | 'required' | 'none' | string;
+    reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
   };
 }

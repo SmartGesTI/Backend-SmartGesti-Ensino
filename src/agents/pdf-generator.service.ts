@@ -263,7 +263,11 @@ export class PdfGeneratorService {
     if (v === null || v === undefined) return String(v);
     if (typeof v === 'string') return v;
     if (typeof v === 'number' || typeof v === 'boolean') return String(v);
-    if (Array.isArray(v)) return v.slice(0, 3).map((x) => this.prettyValue(x)).join(', ');
+    if (Array.isArray(v))
+      return v
+        .slice(0, 3)
+        .map((x) => this.prettyValue(x))
+        .join(', ');
     return JSON.stringify(v);
   }
 }

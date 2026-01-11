@@ -89,6 +89,7 @@ export class AgentFactory {
         maxTokens: config.modelSettings?.maxTokens ?? typeConfig?.defaultMaxTokens,
         parallelToolCalls: config.modelSettings?.parallelToolCalls ?? (config.strategy === 'manager' || config.strategy === 'orchestrator'),
         toolChoice: config.modelSettings?.toolChoice,
+        reasoningEffort: config.modelSettings?.reasoningEffort,
       },
       instructions: config.instructions || typeConfig?.defaultInstructions || 'You are a helpful assistant.',
     };

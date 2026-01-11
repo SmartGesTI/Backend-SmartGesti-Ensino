@@ -16,6 +16,11 @@ import { TagsModule } from './tags/tags.module';
 import { SitesModule } from './sites/sites.module';
 import { RagModule } from './rag/rag.module';
 import { CoreDemoModule } from './ia/core/demo/core-demo.module';
+import { AgentesModule } from './ia/agentes/agentes.module';
+import { ChatTestModule } from './ia/chat-test/chat-test.module';
+import { ChatModule } from './ia/chat/chat.module';
+import { EducaIAModule } from './ia/educa-ia/educa-ia.module';
+import { AiCoreModule } from './ai-core/config/ai-core.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { CacheModule } from './common/cache/cache.module';
 import { LoggingInterceptor } from './common/logger/logger.interceptor';
@@ -43,6 +48,11 @@ import { TenantAccessGuard } from './auth/guards/tenant-access.guard';
     SitesModule,
     RagModule,
     CoreDemoModule,
+    AgentesModule,
+    ChatTestModule,
+    ChatModule,
+    EducaIAModule,
+    AiCoreModule,
   ],
   controllers: [AppController],
   providers: [

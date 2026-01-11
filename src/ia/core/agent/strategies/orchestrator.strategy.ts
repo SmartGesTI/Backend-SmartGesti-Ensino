@@ -2,6 +2,7 @@ import { Agent, tool } from '@openai/agents';
 import { CoreAgent, CoreAgentConfig } from '../agent.types';
 import { CoreTool } from '../../tool/tool.types';
 import { CoreContext } from '../../context/context.types';
+import { filterModelSettings } from './model-settings.helper';
 
 /**
  * Estratégia Orchestrator: Orquestração complexa multi-agente
@@ -48,16 +49,22 @@ export class OrchestratorStrategy {
     }
 
     // Criar agente orchestrator
+    // Filtrar modelSettings para remover temperature se o modelo for GPT-5
+    const filteredModelSettings = filterModelSettings(config.model, {
+      ...config.modelSettings,
+      parallelToolCalls: config.modelSettings?.parallelToolCalls ?? true,
+      // Só incluir temperature se o modelo não for GPT-5
+      ...(config.model && !config.model.startsWith('gpt-5')
+        ? { temperature: config.modelSettings?.temperature ?? 0.7 }
+        : {}),
+    });
+
     return new Agent<TContext>({
       name: config.name,
       instructions: this.buildOrchestratorInstructions(config),
       model: config.model,
       tools: tools.length > 0 ? tools : undefined,
-      modelSettings: {
-        ...config.modelSettings,
-        parallelToolCalls: config.modelSettings?.parallelToolCalls ?? true,
-        temperature: config.modelSettings?.temperature ?? 0.7,
-      },
+      modelSettings: filteredModelSettings,
       inputGuardrails: config.guardrails?.input,
       outputGuardrails: config.guardrails?.output as any,
     });

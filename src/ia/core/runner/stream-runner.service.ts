@@ -13,6 +13,8 @@ export class StreamRunnerService {
 
   /**
    * Executa um agente com streaming
+   * Baseado na documentação: https://openai.github.io/openai-agents-js/guides/streaming/
+   * run() com stream: true retorna um StreamedRunResult que é AsyncIterable
    */
   async *stream<TContext extends CoreContext = CoreContext>(
     agent: CoreAgent<TContext>,
@@ -32,10 +34,25 @@ export class StreamRunnerService {
         runOptions.modelSettings = options.modelSettings;
       }
 
-      const streamResult = run(agent, input, runOptions);
-      const stream = streamResult as unknown as AsyncIterable<StreamedRunResult<TContext, CoreAgent<TContext>>>;
+      // run() com stream: true retorna uma Promise que resolve para um StreamedRunResult
+      // Segundo a documentação: https://openai.github.io/openai-agents-js/guides/streaming/
+      // const result = await run(agent, input, { stream: true });
+      // for await (const event of result) { ... }
+      const streamResult = await run(agent, input, runOptions) as unknown as StreamedRunResult<TContext, CoreAgent<TContext>>;
 
-      for await (const event of stream) {
+      // Verificar se é async iterable
+      if (!streamResult || typeof streamResult[Symbol.asyncIterator] !== 'function') {
+        this.logger.error(
+          `streamResult não é async iterable. Tipo: ${typeof streamResult}, constructor: ${streamResult?.constructor?.name}`,
+        );
+        this.logger.error(`streamResult keys: ${Object.keys(streamResult || {}).join(', ')}`);
+        throw new Error(
+          `streamResult não é async iterable. O resultado de run() com stream: true deve ser um StreamedRunResult iterável.`,
+        );
+      }
+
+      // StreamedRunResult implementa AsyncIterable, então podemos iterar diretamente
+      for await (const event of streamResult) {
         yield event;
       }
     } catch (error: any) {

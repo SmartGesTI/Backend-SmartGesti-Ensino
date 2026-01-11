@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AgentFactory } from '../agent/agent.factory';
-import { ToolFactory } from '../tool/tool.factory';
+import { Observable, Subject } from 'rxjs';
 import { AgentRunnerService } from '../runner/agent-runner.service';
+import { StreamRunnerService } from '../runner/stream-runner.service';
 import { ContextProvider } from '../context/context.provider';
-import { CoreContext } from '../context/context.types';
-import { z } from 'zod';
-import { SearchService } from '../../../rag/services/search.service';
+import { AgentRegistry } from '../agent/agent.registry';
+import { ManagerAgentService } from '../../agentes/manager/manager-agent.service';
+import { KnowledgeBaseAgentService } from '../../agentes/knowledge-base/knowledge-base-agent.service';
 import {
   MultiAgentDemoResult,
   ReasoningStep,
@@ -14,7 +14,7 @@ import {
   MessageItem,
   ExecutionMetadata,
 } from './dto/core-demo.dto';
-import { RunResult } from '@openai/agents';
+import { RunResult, StreamedRunResult } from '@openai/agents';
 
 /**
  * Serviço para demonstrar multi-agente com tracing completo
@@ -24,11 +24,12 @@ export class CoreDemoService {
   private readonly logger = new Logger(CoreDemoService.name);
 
   constructor(
-    private readonly agentFactory: AgentFactory,
-    private readonly toolFactory: ToolFactory,
     private readonly runnerService: AgentRunnerService,
+    private readonly streamRunnerService: StreamRunnerService,
     private readonly contextProvider: ContextProvider,
-    private readonly searchService: SearchService,
+    private readonly agentRegistry: AgentRegistry,
+    private readonly managerAgentService: ManagerAgentService,
+    private readonly knowledgeBaseAgentService: KnowledgeBaseAgentService,
   ) {}
 
   /**
@@ -48,205 +49,20 @@ export class CoreDemoService {
         schoolId,
       });
 
-      // 2. Criar tool de cálculo (real)
-      const calculateTool = this.toolFactory.create({
-        name: 'calculate',
-        description:
-          'Perform mathematical calculations. Accepts expressions like "15 * 23 + 42". Supports basic arithmetic operations: +, -, *, /, parentheses.',
-        parameters: z.object({
-          expression: z
-            .string()
-            .describe('Mathematical expression to evaluate (e.g., "15 * 23 + 42")'),
-        }),
-        execute: async ({ expression }, { context }) => {
-          this.logger.log(`[CalculateTool] Calculando: ${expression}`);
-          try {
-            // Validação básica de segurança - apenas números e operadores matemáticos
-            const sanitized = expression.replace(/[^0-9+\-*/().\s]/g, '');
-            if (sanitized !== expression.replace(/\s/g, '')) {
-              throw new Error('Expressão contém caracteres inválidos');
-            }
-            
-            // AVISO: Em produção, use uma biblioteca segura como mathjs
-            // Por enquanto, usando eval com validação básica
-            const result = eval(expression);
-            
-            if (typeof result !== 'number' || !isFinite(result)) {
-              throw new Error('Resultado inválido');
-            }
-            
-            this.logger.log(`[CalculateTool] Resultado: ${expression} = ${result}`);
-            return {
-              success: true,
-              expression,
-              result,
-              formatted: `${expression} = ${result}`,
-            };
-          } catch (error: any) {
-            this.logger.error(`[CalculateTool] Erro ao calcular: ${error.message}`);
-            return {
-              success: false,
-              expression,
-              error: error.message,
-            };
-          }
-        },
-        category: 'math',
-        tags: ['calculation', 'math'],
-      });
+      // 2. Criar KnowledgeBaseAgent
+      this.logger.log('Criando KnowledgeBaseAgent...');
+      const kbAgent = await this.knowledgeBaseAgentService.create(context);
 
-      // 3. Criar tool de busca (real - integra com RAG)
-      const searchTool = this.toolFactory.create({
-        name: 'search',
-        description: 'Search for information about a topic in the knowledge base. Returns relevant information from indexed documents.',
-        parameters: z.object({
-          query: z.string().describe('Search query or topic to search for'),
-        }),
-        execute: async ({ query }, { context }) => {
-          this.logger.log(`[SearchTool] Buscando na knowledge base: ${query}`);
-          
-          try {
-            // Busca real na knowledge base usando SearchService
-            const searchResults = await this.searchService.hybridSearch(query, {
-              topK: 3,
-            });
+      // 3. Registrar no registry (para Manager descobrir)
+      // Nota: O AgentFactory já registra automaticamente, mas garantimos aqui
+      this.agentRegistry.register(kbAgent);
+      this.logger.log('KnowledgeBaseAgent registrado no AgentRegistry');
 
-            this.logger.log(`[SearchTool] Encontrados ${searchResults.length} resultados na knowledge base`);
+      // 4. Criar ManagerAgent (descobrirá KB agent automaticamente)
+      this.logger.log('Criando ManagerAgent com descoberta dinâmica...');
+      const managerAgent = await this.managerAgentService.create(context);
 
-            // Se não encontrar resultados na knowledge base, retornar informação estruturada
-            if (searchResults.length === 0) {
-              // Busca específica para TypeScript (fallback)
-              if (query.toLowerCase().includes('typescript') || query.toLowerCase().includes('ts')) {
-                return {
-                  success: true,
-                  query,
-                  results: [
-                    {
-                      title: 'TypeScript - Linguagem de Programação',
-                      content: `TypeScript é uma linguagem de programação de código aberto desenvolvida pela Microsoft. É um superset do JavaScript que adiciona tipagem estática opcional e recursos avançados de orientação a objetos.
-
-Características principais:
-- Tipagem estática opcional
-- Interfaces e tipos customizados
-- Classes e herança
-- Genéricos (Generics)
-- Inferência de tipos avançada
-- Decorators
-- Namespaces e módulos
-
-TypeScript compila para JavaScript puro, permitindo compatibilidade com qualquer ambiente que execute JavaScript. É amplamente usado em frameworks como Angular, React e Vue.js para desenvolvimento de aplicações web escaláveis.`,
-                      relevance: 0.98,
-                      source: 'knowledge-base',
-                    },
-                  ],
-                };
-              }
-              
-              return {
-                success: true,
-                query,
-                results: [
-                  {
-                    title: `Informações sobre ${query}`,
-                    content: `Não foram encontrados resultados na knowledge base para "${query}". Em uma implementação completa, esta busca consultaria múltiplas fontes de conhecimento.`,
-                    relevance: 0.5,
-                    source: 'knowledge-base',
-                  },
-                ],
-              };
-            }
-
-            // Formatar resultados da busca real
-            return {
-              success: true,
-              query,
-              results: searchResults.map((result: any) => ({
-                title: result.document?.title || result.sectionTitle || 'Resultado da busca',
-                content: result.content || '',
-                relevance: result.similarity || 0.8,
-                source: 'knowledge-base',
-                metadata: {
-                  documentId: result.documentId,
-                  category: result.document?.category,
-                },
-              })),
-            };
-          } catch (error: any) {
-            this.logger.error(`[SearchTool] Erro na busca: ${error.message}`);
-            return {
-              success: false,
-              query,
-              error: error.message,
-              results: [],
-            };
-          }
-        },
-        category: 'search',
-        tags: ['search', 'information'],
-      });
-
-      // 4. Criar agente especialista para cálculos
-      const calculatorAgent = await this.agentFactory.create({
-        name: 'CalculatorAgent',
-        instructions: `You are a mathematical calculation specialist named CalculatorAgent.
-
-Your role is to:
-- Receive mathematical expressions from the manager
-- Use the calculate tool to evaluate them accurately
-- Return the result in a clear format: "The result of [expression] is [result]"
-
-IMPORTANT: Always use the calculate tool for any mathematical operations. Never try to calculate manually.`,
-        model: 'gpt-4.1-mini',
-        tools: [calculateTool],
-        strategy: 'simple',
-        category: 'math',
-      });
-
-      // 5. Criar agente especialista para buscas
-      const searchAgent = await this.agentFactory.create({
-        name: 'SearchAgent',
-        instructions: `You are an information search specialist named SearchAgent.
-
-Your role is to:
-- Receive search queries from the manager
-- Use the search tool to find relevant information
-- Synthesize the search results into a clear, organized response
-- Include key information from the search results
-
-IMPORTANT: Always use the search tool to find information. Present the information in a structured way.`,
-        model: 'gpt-4.1-mini',
-        tools: [searchTool],
-        strategy: 'simple',
-        category: 'search',
-      });
-
-      // 6. Criar agente Manager que orquestra
-      const managerAgent = await this.agentFactory.create({
-        name: 'ManagerAgent',
-        instructions: `You are ManagerAgent, a coordinator that orchestrates responses by delegating to specialized agents.
-
-Available specialist agents (use them as tools):
-- CalculatorAgent: For mathematical calculations and computations. Use when user asks for calculations, math operations, or numerical evaluations.
-- SearchAgent: For searching and retrieving information. Use when user asks for information, facts, or knowledge about topics.
-
-Your process:
-1. Analyze the user's query carefully
-2. Identify which tasks need to be performed (calculation, search, or both)
-3. Delegate to the appropriate specialist agent(s) by calling them as tools
-4. Wait for results from all agents
-5. Combine the results into a comprehensive final answer
-
-IMPORTANT: 
-- Always use the specialist agents as tools when their expertise is needed
-- Explain what you're doing: "I will delegate the calculation to CalculatorAgent and the search to SearchAgent"
-- Present the final answer clearly combining all results`,
-        model: 'gpt-4.1-mini',
-        strategy: 'manager',
-        handoffs: [calculatorAgent, searchAgent],
-        category: 'manager',
-      });
-
-      // 7. Executar o manager agent
+      // 5. Executar ManagerAgent
       this.logger.log(`Executando demo multi-agente com query: ${query}`);
       const result = await this.runnerService.run(managerAgent, query, {
         context,
@@ -290,17 +106,329 @@ IMPORTANT:
         finalAnswer: result.finalOutput || 'Sem resposta',
         execution: executionDetails,
         metadata: {
-          totalAgents: 3, // Manager + 2 especialistas
+          totalAgents: this.agentRegistry.count(), // Total de agentes registrados
           totalToolCalls: executionDetails.toolCalls.length,
           totalDelegations: executionDetails.delegations.length,
           executionTime,
-          model: 'gpt-4.1-mini',
+          model: 'gpt-5-mini',
         },
       };
     } catch (error: any) {
       this.logger.error(`Erro no demo multi-agente: ${error.message}`, error.stack);
       throw error;
     }
+  }
+
+  /**
+   * Executa o demo multi-agente com streaming
+   */
+  streamMultiAgentDemo(
+    query: string,
+    tenantId: string,
+    userId: string,
+    schoolId?: string,
+  ): Observable<any> {
+    const subject = new Subject<any>();
+
+    (async () => {
+      try {
+        // 1. Criar contexto
+        const context = this.contextProvider.getContext(tenantId, userId, {
+          schoolId,
+        });
+
+        // 2. Criar KnowledgeBaseAgent
+        this.logger.log('Criando KnowledgeBaseAgent para streaming...');
+        const kbAgent = await this.knowledgeBaseAgentService.create(context);
+
+        // 3. Registrar no registry
+        this.agentRegistry.register(kbAgent);
+        this.logger.log('KnowledgeBaseAgent registrado no AgentRegistry');
+
+        // 4. Criar ManagerAgent
+        this.logger.log('Criando ManagerAgent com descoberta dinâmica...');
+        const managerAgent = await this.managerAgentService.create(context);
+
+        // 5. Executar ManagerAgent com streaming
+        this.logger.log(`Executando demo multi-agente com streaming: ${query}`);
+        
+        const stream = this.streamRunnerService.stream(managerAgent, query, {
+          context,
+        });
+
+        let accumulatedContent = '';
+
+        for await (const event of stream) {
+          // Formatar evento do stream (seguindo padrão do Knowledge Base)
+          const formattedEvent = this.formatStreamEvent(event);
+          if (formattedEvent) {
+            // Acumular conteúdo para tokens
+            if (formattedEvent.type === 'token') {
+              accumulatedContent += formattedEvent.data.content || formattedEvent.data.delta || '';
+            }
+
+            subject.next({
+              type: formattedEvent.type,
+              data: formattedEvent.data,
+              timestamp: Date.now(),
+            });
+          }
+        }
+
+        // Enviar evento de conclusão com resposta final (seguindo padrão do Knowledge Base)
+        subject.next({
+          type: 'done',
+          data: {
+            answer: accumulatedContent || 'Não foi possível gerar uma resposta.',
+          },
+          timestamp: Date.now(),
+        });
+
+        subject.complete();
+      } catch (error: any) {
+        this.logger.error(
+          `Erro no demo multi-agente com streaming: ${error.message}`,
+          error.stack,
+        );
+        subject.error(error);
+      }
+    })();
+
+    return subject.asObservable();
+  }
+
+  /**
+   * Formata evento do stream para o formato esperado (compatível com frontend)
+   * Baseado na documentação: https://openai.github.io/openai-agents-js/guides/streaming/
+   */
+  private formatStreamEvent(event: any): { type: string; data: any } | null {
+    // 1. raw_model_stream_event - eventos diretos do modelo
+    if (event.type === 'raw_model_stream_event' && event.data) {
+      const data = event.data;
+      
+      // Reasoning do modelo
+      if (data.type === 'reasoning' || data.type === 'reasoning_delta') {
+        return {
+          type: 'thinking',
+          data: {
+            reasoning: data.content || data.delta || data.text || '',
+            delta: data.delta || '',
+          },
+        };
+      }
+      
+      // Texto do modelo (output_text_delta)
+      if (data.type === 'output_text_delta' || data.type === 'text_delta') {
+        return {
+          type: 'token',
+          data: {
+            content: data.delta || data.content || '',
+            delta: data.delta || data.content || '',
+          },
+        };
+      }
+      
+      // Texto completo (output_text)
+      if (data.type === 'output_text' || data.type === 'text') {
+        return {
+          type: 'token',
+          data: {
+            content: data.content || data.text || '',
+            delta: data.content || data.text || '',
+          },
+        };
+      }
+    }
+
+    // 2. run_item_stream_event - eventos de itens de execução
+    if (event.type === 'run_item_stream_event' && event.item) {
+      const item = event.item;
+      
+      // Reasoning item
+      if (item.type === 'reasoning' || item.type === 'reasoning_item') {
+        const reasoningText = this.extractReasoningText(item);
+        return {
+          type: 'thinking',
+          data: {
+            reasoning: reasoningText,
+          },
+        };
+      }
+      
+      // Tool call
+      if (item.type === 'tool_call' || item.type === 'function') {
+        return {
+          type: 'tool_call',
+          data: {
+            toolCalls: [item],
+          },
+        };
+      }
+      
+      // Tool result
+      if (item.type === 'tool_call_output' || item.type === 'tool') {
+        return {
+          type: 'tool_result',
+          data: {
+            toolResults: [item],
+          },
+        };
+      }
+      
+      // Message output (texto)
+      if (item.type === 'message_output' || item.type === 'message') {
+        const content = this.extractMessageContent(item.content);
+        if (content) {
+          return {
+            type: 'token',
+            data: {
+              content: content,
+              delta: content,
+            },
+          };
+        }
+      }
+    }
+
+    // 3. agent_updated_stream_event - mudança de agente
+    if (event.type === 'agent_updated_stream_event') {
+      return {
+        type: 'agent_updated',
+        data: {
+          agent: event.agent?.name || 'Unknown',
+        },
+      };
+    }
+
+    // 4. Eventos diretos (compatibilidade com versões anteriores)
+    if (event.type === 'content' || event.type === 'text') {
+      return {
+        type: 'token',
+        data: {
+          content: event.content || event.text || event.delta || '',
+          delta: event.delta || event.content || event.text || '',
+        },
+      };
+    }
+
+    if (event.type === 'tool_call' || event.toolCalls) {
+      return {
+        type: 'tool_call',
+        data: {
+          toolCalls: event.toolCalls || [event],
+        },
+      };
+    }
+
+    if (event.type === 'tool_result' || event.toolResults) {
+      return {
+        type: 'tool_result',
+        data: {
+          toolResults: event.toolResults || [event],
+        },
+      };
+    }
+
+    if (event.type === 'thinking' || event.reasoning) {
+      return {
+        type: 'thinking',
+        data: {
+          reasoning: event.reasoning || event.thinking || event.content,
+        },
+      };
+    }
+
+    // 5. Eventos com content/delta direto
+    if (event.content && typeof event.content === 'string') {
+      return {
+        type: 'token',
+        data: {
+          content: event.content,
+          delta: event.delta || event.content,
+        },
+      };
+    }
+
+    if (event.delta && typeof event.delta === 'string') {
+      return {
+        type: 'token',
+        data: {
+          content: event.delta,
+          delta: event.delta,
+        },
+      };
+    }
+
+    // 6. newItems (formato legado)
+    if (event.newItems && Array.isArray(event.newItems)) {
+      for (const item of event.newItems) {
+        if (item.type === 'content' || item.type === 'text') {
+          return {
+            type: 'token',
+            data: {
+              content: item.content || item.text || '',
+              delta: item.delta || item.content || item.text || '',
+            },
+          };
+        }
+        if (item.type === 'tool_call') {
+          return {
+            type: 'tool_call',
+            data: {
+              toolCalls: [item],
+            },
+          };
+        }
+        if (item.type === 'reasoning' || item.type === 'reasoning_item') {
+          const reasoningText = this.extractReasoningText(item);
+          return {
+            type: 'thinking',
+            data: {
+              reasoning: reasoningText,
+            },
+          };
+        }
+      }
+    }
+
+    // Ignorar eventos desconhecidos (log para debug)
+    this.logger.debug(`Evento de stream não mapeado: ${JSON.stringify(event)}`);
+    return null;
+  }
+
+  /**
+   * Extrai texto de reasoning de um item
+   */
+  private extractReasoningText(item: any): string {
+    if (item.content) {
+      if (typeof item.content === 'string') {
+        return item.content;
+      }
+      if (Array.isArray(item.content)) {
+        return item.content
+          .map((entry: any) => {
+            if (entry.type === 'input_text' && entry.text) {
+              return entry.text;
+            }
+            if (entry.text) {
+              return entry.text;
+            }
+            if (entry.content) {
+              return this.extractReasoningText(entry);
+            }
+            return '';
+          })
+          .filter(Boolean)
+          .join(' ');
+      }
+    }
+    if (item.text) {
+      return item.text;
+    }
+    if (item.delta) {
+      return item.delta;
+    }
+    return '';
   }
 
   /**

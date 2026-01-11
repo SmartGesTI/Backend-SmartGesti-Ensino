@@ -37,6 +37,9 @@
     "rag:status": "ts-node -r tsconfig-paths/register src/cli.ts rag:status"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.2",
+    "@ai-sdk/google": "^3.0.2",
+    "@ai-sdk/openai": "^3.0.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
@@ -45,6 +48,7 @@
     "@nestjs/typeorm": "^11.0.0",
     "@openai/agents": "^0.3.7",
     "@supabase/supabase-js": "^2.89.0",
+    "ai": "^6.0.7",
     "axios": "^1.13.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",

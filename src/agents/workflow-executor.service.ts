@@ -67,7 +67,9 @@ export class WorkflowExecutorService {
     this.logger.log(`Modelo OpenAI configurado: ${this.defaultModel}`);
 
     if (!this.openaiApiKey) {
-      this.logger.warn('OPENAI_API_KEY não configurada. Execuções de IA falharão.');
+      this.logger.warn(
+        'OPENAI_API_KEY não configurada. Execuções de IA falharão.',
+      );
     } else {
       // Configurar chave padrão do OpenAI SDK
       setDefaultOpenAIKey(this.openaiApiKey);
@@ -149,10 +151,14 @@ export class WorkflowExecutorService {
         );
       });
       if (outputNodes.length === 0) {
-        throw new Error('Workflow sem nó de saída (output). Adicione um gerador de relatório ou envio.');
+        throw new Error(
+          'Workflow sem nó de saída (output). Adicione um gerador de relatório ou envio.',
+        );
       }
       if (outputNodes.length > 1) {
-        throw new Error('Workflow possui múltiplos nós de saída. Mantenha apenas um nó de output.');
+        throw new Error(
+          'Workflow possui múltiplos nós de saída. Mantenha apenas um nó de output.',
+        );
       }
       const orderedNodes = this.getNodesInOrder(workflow.nodes, workflow.edges);
       let currentData: any = null;
