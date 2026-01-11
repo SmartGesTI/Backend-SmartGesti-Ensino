@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { EducaIAController } from './educa-ia.controller';
 import { EducaIAService } from './educa-ia.service';
 import { FeedbackService } from './feedback.service';
-import { AiCoreModule } from '../../ai-core/config/ai-core.module';
+import { AiCoreModule } from '../config/ai-core.module';
 
 /**
  * EducaIA Module

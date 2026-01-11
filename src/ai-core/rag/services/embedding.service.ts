@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import { LoggerService } from '../../common/logger/logger.service';
+import { LoggerService } from '../../../common/logger/logger.service';
 import { EMBEDDING_CONFIG } from '../constants/rag.constants';
 
 export interface EmbeddingResult {

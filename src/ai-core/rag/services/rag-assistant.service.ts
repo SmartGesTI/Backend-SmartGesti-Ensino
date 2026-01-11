@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Observable, Subject } from 'rxjs';
-import { SupabaseService } from '../../supabase/supabase.service';
+import { SupabaseService } from '../../../supabase/supabase.service';
 import { EmbeddingService } from './embedding.service';
-import { OpenAIService } from '../../agents/shared/llm/openai.service';
+import { OpenAIService } from '../../../agents/shared/llm/openai.service';
 import { ChatMessageDto } from '../dto';
 import { RagToolsService } from '../tools/rag-tools.service';
 import { RAG_TOOLS, RagToolName } from '../tools/rag-tools.types';
-import { StreamingEvent, LLMMessage } from '../../agents/shared/llm/llm.types';
+import { StreamingEvent, LLMMessage } from '../../../agents/shared/llm/llm.types';
 
 export interface AnswerResult {
   answer: string;

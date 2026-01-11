@@ -2,8 +2,8 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { SupabaseModule } from '../../supabase/supabase.module';
 import { LoggerModule } from '../../common/logger/logger.module';
-import { RagModule } from '../../rag/rag.module';
-import { KnowledgeRetrievalService } from '../../ia/retrieval/knowledge-retrieval.service';
+import { RagModule } from '../rag/rag.module';
+import { KnowledgeRetrievalService } from '../retrieval/knowledge-retrieval.service';
 
 // Config
 import { AiCoreConfigService } from './ai-core.config';

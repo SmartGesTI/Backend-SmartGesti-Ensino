@@ -18,8 +18,8 @@ import { SemanticSearchTool, RagToolsService } from './tools';
 import { RagController } from './rag.controller';
 
 // Common
-import { LoggerModule } from '../common/logger/logger.module';
-import { SharedModule } from '../agents/shared/shared.module';
+import { LoggerModule } from '../../common/logger/logger.module';
+import { SharedModule } from '../../agents/shared/shared.module';
 
 @Module({
   imports: [ConfigModule, LoggerModule, SharedModule],

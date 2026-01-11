@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { LoggerService } from '../../common/logger/logger.service';
-import { SupabaseService } from '../../supabase/supabase.service';
+import { LoggerService } from '../../../common/logger/logger.service';
+import { SupabaseService } from '../../../supabase/supabase.service';
 import { EmbeddingService } from './embedding.service';
 import { SearchResultDto } from '../dto';
 import { SEARCH_CONFIG, RagCategory } from '../constants/rag.constants';

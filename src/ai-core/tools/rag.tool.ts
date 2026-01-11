@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { tool } from 'ai';
 import { z } from 'zod';
-import { KnowledgeRetrievalService } from '../../ia/retrieval/knowledge-retrieval.service';
+import { KnowledgeRetrievalService } from '../retrieval/knowledge-retrieval.service';
 import { Tool } from '@ai-sdk/provider-utils';
 
 /**

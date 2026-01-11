@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { LoggerService } from '../../common/logger/logger.service';
+import { LoggerService } from '../../../common/logger/logger.service';
 import { CHUNK_CONFIG, DocumentFrontmatter } from '../constants/rag.constants';
 
 export interface Chunk {

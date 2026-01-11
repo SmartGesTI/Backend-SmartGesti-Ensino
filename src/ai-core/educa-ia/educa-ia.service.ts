@@ -7,17 +7,17 @@ import {
   stepCountIs,
   type UIMessage,
 } from 'ai';
-import { EducaIAAgent, detectComplexity, supportsReasoning, type ResponseMode } from '../../ai-core/agents/educa-ia.agent';
-import { ModelProviderFactory } from '../../ai-core/providers/model-provider.factory';
-import { ModelProviderConfigService } from '../../ai-core/config/model-provider.config';
-import { AiCoreConfigService } from '../../ai-core/config/ai-core.config';
-import { MemoryService } from '../../ai-core/memory/memory.service';
+import { EducaIAAgent, detectComplexity, supportsReasoning, type ResponseMode } from '../agents/educa-ia.agent';
+import { ModelProviderFactory } from '../providers/model-provider.factory';
+import { ModelProviderConfigService } from '../config/model-provider.config';
+import { AiCoreConfigService } from '../config/ai-core.config';
+import { MemoryService } from '../memory/memory.service';
 import { SupabaseService } from '../../supabase/supabase.service';
-import { RAGTool } from '../../ai-core/tools/rag.tool';
-import { DatabaseTool } from '../../ai-core/tools/database.tool';
-import { NavigationTool } from '../../ai-core/tools/navigation.tool';
-import { UserDataTool } from '../../ai-core/tools/user-data.tool';
-import { AgentsTool } from '../../ai-core/tools/agents.tool';
+import { RAGTool } from '../tools/rag.tool';
+import { DatabaseTool } from '../tools/database.tool';
+import { NavigationTool } from '../tools/navigation.tool';
+import { UserDataTool } from '../tools/user-data.tool';
+import { AgentsTool } from '../tools/agents.tool';
 
 export interface EducaIAStreamOptions {
   tenantId: string;

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Tool, ToolContext } from '../../agents/shared/tools/tool.interface';
+import { Tool, ToolContext } from '../../../agents/shared/tools/tool.interface';
 import { SearchService } from '../services/search.service';
 import { RAG_CATEGORIES, SEARCH_CONFIG } from '../constants/rag.constants';
 

@@ -23,7 +23,7 @@ import {
   ExportFinetuningDto,
   StreamingAskDto,
 } from './dto';
-import { StreamingEvent } from '../agents/shared/llm/llm.types';
+import { StreamingEvent } from '../../agents/shared/llm/llm.types';
 
 @Controller('rag')
 export class RagController {
