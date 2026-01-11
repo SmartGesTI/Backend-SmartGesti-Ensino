@@ -24,7 +24,7 @@ export const CHUNK_CONFIG = {
 export const SEARCH_CONFIG = {
   DEFAULT_TOP_K: 5,
   MAX_TOP_K: 20,
-  SIMILARITY_THRESHOLD: 0.7,
+  SIMILARITY_THRESHOLD: 0.5, // Reduzido de 0.7 para capturar mais resultados relevantes
   HYBRID_SEMANTIC_WEIGHT: 0.7,
   HYBRID_FULLTEXT_WEIGHT: 0.3,
 } as const;

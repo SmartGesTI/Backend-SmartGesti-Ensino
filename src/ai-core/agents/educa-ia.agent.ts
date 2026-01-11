@@ -138,12 +138,16 @@ export class EducaIAAgent {
 
 ## COMO USAR AS TOOLS
 
-### retrieveKnowledge (RAG)
-Use para buscar na base de conhecimento:
-- Informações sobre funcionalidades do sistema
-- Documentação de APIs e integrações
-- Guias de uso de páginas e recursos
-- Configurações e boas práticas
+### retrieveKnowledge (RAG) - USE SEMPRE!
+Esta é sua ferramenta PRINCIPAL para buscar QUALQUER tipo de informação.
+A base de conhecimento contém informações sobre TODOS os aspectos do sistema:
+- Funcionalidades acadêmicas, financeiras, administrativas
+- Documentação de todas as áreas (matrícula, turmas, alunos, financeiro, RH, etc.)
+- Guias de uso, tutoriais, FAQs
+- Configurações, integrações, APIs
+- E QUALQUER outro tipo de informação do sistema
+
+**REGRA CRÍTICA**: Quando o usuário perguntar sobre QUALQUER funcionalidade ou informação do sistema, SEMPRE use retrieveKnowledge PRIMEIRO, ANTES de tentar responder. Não assuma que sabe - busque na base!
 
 ### queryDatabase (requer aprovação)
 Use para consultar dados específicos:

@@ -37,7 +37,7 @@ export class RAGTool {
   createTool(context: RAGToolContext): Tool {
     return tool({
       description:
-        'Busca informações na base de conhecimento do sistema. Use quando precisar de informações sobre funcionalidades, APIs, páginas, ou documentação do sistema. Retorna documentos relevantes baseados em busca semântica.',
+        'Busca QUALQUER informação na base de conhecimento do sistema. Use SEMPRE que o usuário perguntar sobre o sistema, suas funcionalidades, processos, configurações ou qualquer dúvida. A base contém informações sobre TODAS as áreas: acadêmico, financeiro, administrativo, RH, matrículas, turmas, alunos, relatórios, IA, e mais. Retorna os documentos mais relevantes via busca semântica.',
       inputSchema: z.object({
         query: z
           .string()
