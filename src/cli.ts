@@ -1,13 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { IngestionService } from './ai-core/rag/services/ingestion.service';
 import { LoggerService } from './common/logger/logger.service';
-import { RagDocument, RagChunk } from './ai-core/rag/entities';
 import { EmbeddingService, ChunkService, SearchService } from './ai-core/rag/services';
 import { LoggerModule } from './common/logger/logger.module';
-import { SharedModule } from './agents/shared/shared.module';
+import { SupabaseModule } from './supabase/supabase.module';
 import * as path from 'path';
 
 @Module({
@@ -15,21 +13,8 @@ import * as path from 'path';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'db.eazovcqdbarejrhxvjdm.supabase.co',
-      port: 5432,
-      username: 'postgres',
-      password: process.env.SUPABASE_PASSWORD || 'postgres',
-      database: 'postgres',
-      entities: [RagDocument, RagChunk],
-      synchronize: false,
-      logging: false,
-      ssl: { rejectUnauthorized: false },
-    }),
-    TypeOrmModule.forFeature([RagDocument, RagChunk]),
     LoggerModule,
-    SharedModule,
+    SupabaseModule,
   ],
   providers: [IngestionService, EmbeddingService, ChunkService, SearchService],
 })

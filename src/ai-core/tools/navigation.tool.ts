@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { tool } from 'ai';
 import { z } from 'zod';
 import { SupabaseService } from '../../supabase/supabase.service';
+import { UrlBuilderService } from '../../agents/shared/url/url-builder.service';
 import { Tool } from '@ai-sdk/provider-utils';
 
 export interface NavigationToolContext {
@@ -9,17 +10,22 @@ export interface NavigationToolContext {
   userId?: string;
   schoolId?: string;
   schoolSlug?: string;
+  requestOrigin?: string; // Para construir URLs completas (ex: "http://magistral.localhost:5173")
 }
 
 /**
  * Navigation Tool for suggesting system pages and menus
  * Uses RAG document metadata (routePattern, menuPath) to suggest navigation
+ * Builds complete URLs dynamically based on environment (dev/prod)
  */
 @Injectable()
 export class NavigationTool {
   private readonly logger = new Logger(NavigationTool.name);
 
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly urlBuilder: UrlBuilderService,
+  ) {}
 
   /**
    * Create the navigation tool with context injection
@@ -27,7 +33,7 @@ export class NavigationTool {
   createTool(context: NavigationToolContext): Tool {
     return tool({
       description:
-        'Sugere páginas e menus do sistema SmartGesTI Ensino. Use quando o usuário perguntar "onde encontro...", "como acessar...", ou quando precisar direcionar para uma funcionalidade específica. Retorna rotas e caminhos de menu.',
+        'Sugere páginas e menus do sistema SmartGesTI Ensino. Use quando o usuário perguntar "onde encontro...", "como acessar...", ou quando precisar direcionar para uma funcionalidade específica. Retorna rotas, caminhos de menu e links clicáveis.',
       inputSchema: z.object({
         query: z
           .string()
@@ -108,9 +114,15 @@ export class NavigationTool {
             };
           }
 
-          // Build suggestions with resolved routes
+          // Build suggestions with complete URLs
           const suggestions = scoredDocs.map((doc) => {
-            // Replace :slug with actual school slug if available
+            // Build complete URL using UrlBuilderService
+            const fullUrl = this.urlBuilder.buildFullUrl(doc.route_pattern, {
+              schoolSlug: context.schoolSlug,
+              requestOrigin: context.requestOrigin,
+            });
+            
+            // Also build the resolved route (without domain) for internal navigation
             let resolvedRoute = doc.route_pattern;
             if (context.schoolSlug && resolvedRoute) {
               resolvedRoute = resolvedRoute.replace(':slug', context.schoolSlug);
@@ -118,8 +130,8 @@ export class NavigationTool {
             
             return {
               title: doc.title,
-              route: resolvedRoute,
-              routePattern: doc.route_pattern, // Keep original pattern for reference
+              url: fullUrl, // URL completa para o usuário clicar
+              route: resolvedRoute, // Rota relativa para navegação interna
               menuPath: doc.menu_path,
               category: doc.category,
             };
@@ -150,8 +162,9 @@ export class NavigationTool {
             if (s.menuPath) {
               parts.push(`   📍 Menu: ${s.menuPath}`);
             }
-            // Note: route is not shown to user (technical detail)
-            // but is included in output for frontend navigation buttons
+            if (s.url) {
+              parts.push(`   🔗 Link: ${s.url}`);
+            }
             return parts.join('\n');
           })
           .join('\n\n');

@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { SupabaseModule } from '../../supabase/supabase.module';
 import { LoggerModule } from '../../common/logger/logger.module';
+import { SharedModule } from '../../agents/shared/shared.module';
 import { RagModule } from '../rag/rag.module';
 import { KnowledgeRetrievalService } from '../retrieval/knowledge-retrieval.service';
 
@@ -49,7 +50,7 @@ import { WorkflowExecutorService } from '../workflows/workflow-executor.service'
 
 @Global()
 @Module({
-  imports: [ConfigModule, SupabaseModule, LoggerModule, RagModule],
+  imports: [ConfigModule, SupabaseModule, LoggerModule, SharedModule, RagModule],
   providers: [
     // Config
     AiCoreConfigService,

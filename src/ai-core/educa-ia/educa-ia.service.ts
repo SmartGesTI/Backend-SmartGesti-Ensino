@@ -30,6 +30,7 @@ export interface EducaIAStreamOptions {
   conversationId?: string;
   temperature?: number;
   maxTokens?: number;
+  requestOrigin?: string; // Para construir URLs dinâmicas (ex: "http://magistral.localhost:5173")
 }
 
 @Injectable()
@@ -184,9 +185,9 @@ export class EducaIAService {
     );
     streamOptions.system = systemPrompt;
 
-    // Create tools from agent (pass schoolSlug for navigation URLs)
+    // Create tools from agent (pass schoolSlug and requestOrigin for navigation URLs)
     const schoolSlug = schoolData?.slug;
-    const tools = this.createTools(options, userId, schoolSlug);
+    const tools = this.createTools(options, userId, schoolSlug, options.requestOrigin);
     const toolNames = Object.keys(tools);
     
     if (toolNames.length > 0) {
@@ -278,11 +279,17 @@ export class EducaIAService {
       .eq('id', conversationId)
       .eq('user_id', userId)
       .eq('tenant_id', tenantId)
-      .single();
+      .maybeSingle(); // Use maybeSingle instead of single to handle non-existent records
 
     if (error) {
       this.logger.error(`Error getting conversation: ${error.message}`);
       throw error;
+    }
+
+    // If conversation doesn't exist yet (race condition), return empty array
+    if (!data) {
+      this.logger.debug(`Conversation ${conversationId} not found yet, returning empty`);
+      return [];
     }
 
     // Return messages in UIMessage format with parts
@@ -534,12 +541,14 @@ export class EducaIAService {
     options: EducaIAStreamOptions, 
     userId: string,
     schoolSlug?: string,
+    requestOrigin?: string,
   ): Record<string, any> {
     const toolContext = {
       tenantId: options.tenantId,
       userId,
       schoolId: options.schoolId,
       schoolSlug, // For building navigation URLs
+      requestOrigin, // For building complete URLs dynamically
       responseMode: options.responseMode,
     };
 

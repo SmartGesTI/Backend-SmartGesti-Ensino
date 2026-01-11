@@ -51,6 +51,7 @@ export class EducaIAController {
     @Req() req: Request,
     @Headers('x-tenant-id') tenantId?: string,
     @Headers('x-school-id') schoolId?: string,
+    @Headers('origin') requestOrigin?: string,
   ) {
     // Set SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -68,7 +69,7 @@ export class EducaIAController {
       }
 
       this.logger.debug(
-        `EducaIA stream request: ${dto.messages.length} messages (mode: ${dto.responseMode || 'fast'})`,
+        `EducaIA stream request: ${dto.messages.length} messages (mode: ${dto.responseMode || 'fast'}, origin: ${requestOrigin})`,
       );
 
       // Stream using the service
@@ -86,6 +87,7 @@ export class EducaIAController {
           conversationId: dto.conversationId,
           temperature: dto.temperature,
           maxTokens: dto.maxTokens,
+          requestOrigin, // Para construir URLs dinâmicas
         },
       );
     } catch (error: any) {
