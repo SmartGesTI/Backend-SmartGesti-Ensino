@@ -3,7 +3,6 @@ import { SupabaseService } from '../../supabase/supabase.service';
 import { EmbeddingService } from '../../rag/services/embedding.service';
 import { SearchResultDto } from '../../rag/dto';
 import { RagCategory, SEARCH_CONFIG } from '../../rag/constants/rag.constants';
-import { CoreContext } from '../core/context/context.types';
 
 export interface KnowledgeRetrievalOptions {
   topK?: number;
