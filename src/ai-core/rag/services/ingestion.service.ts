@@ -289,62 +289,160 @@ export class IngestionService {
   }
 
   /**
-   * Parse markdown com frontmatter YAML
+   * Parse markdown com frontmatter YAML ou formato customizado [Documento:], [Menu:], [Rota:]
    */
   private parseMarkdown(content: string, filePath: string): ParsedDocument {
-    // Detectar frontmatter (entre ---)
+    const fileName = path.basename(filePath, '.md');
+    
+    // 1. Tentar frontmatter YAML (entre ---)
     const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
-    const match = content.match(frontmatterRegex);
+    const yamlMatch = content.match(frontmatterRegex);
 
-    if (!match) {
-      // Sem frontmatter - usar valores padrão
-      const fileName = path.basename(filePath, '.md');
-      return {
-        frontmatter: {
-          id: fileName,
-          title: fileName,
-          category: 'geral',
-        },
-        content: content.trim(),
-      };
+    if (yamlMatch) {
+      const frontmatterStr = yamlMatch[1];
+      const markdownContent = yamlMatch[2];
+
+      try {
+        const frontmatter = yaml.parse(frontmatterStr) as DocumentFrontmatter;
+        
+        // Validar campos obrigatórios
+        if (!frontmatter.id) frontmatter.id = fileName;
+        if (!frontmatter.title) frontmatter.title = frontmatter.id;
+        if (!frontmatter.category) frontmatter.category = 'geral';
+
+        return {
+          frontmatter,
+          content: markdownContent.trim(),
+        };
+      } catch (error: any) {
+        this.logger.warn(
+          `Erro ao parsear YAML frontmatter de ${filePath}: ${error.message}`,
+          'IngestionService',
+        );
+      }
     }
 
-    const frontmatterStr = match[1];
-    const markdownContent = match[2];
+    // 2. Tentar formato customizado: [Documento:], [Menu:], [Rota:]
+    const customFormatResult = this.parseCustomFormat(content, filePath);
+    if (customFormatResult) {
+      return customFormatResult;
+    }
 
-    try {
-      const frontmatter = yaml.parse(frontmatterStr) as DocumentFrontmatter;
+    // 3. Fallback: usar valores padrão baseados no caminho do arquivo
+    const category = this.inferCategoryFromPath(filePath);
+    return {
+      frontmatter: {
+        id: fileName,
+        title: fileName,
+        category,
+      },
+      content: content.trim(),
+    };
+  }
+
+  /**
+   * Parse formato customizado: [Documento:], [Menu:], [Rota:]
+   */
+  private parseCustomFormat(content: string, filePath: string): ParsedDocument | null {
+    const fileName = path.basename(filePath, '.md');
+    const lines = content.split('\n');
+    
+    let title = '';
+    let menuPath = '';
+    let route = '';
+    let contentStartIndex = 0;
+
+    // Buscar metadados nas primeiras linhas
+    for (let i = 0; i < Math.min(10, lines.length); i++) {
+      const line = lines[i].trim();
       
-      // Validar campos obrigatórios
-      if (!frontmatter.id) {
-        frontmatter.id = path.basename(filePath, '.md');
+      // [Documento: Dashboard - Visão Geral]
+      const docMatch = line.match(/^\[Documento:\s*(.+?)\]$/i);
+      if (docMatch) {
+        title = docMatch[1].trim();
+        contentStartIndex = i + 1;
+        continue;
       }
-      if (!frontmatter.title) {
-        frontmatter.title = frontmatter.id;
+      
+      // [Menu: Painel > Visão Geral]
+      const menuMatch = line.match(/^\[Menu:\s*(.+?)\]$/i);
+      if (menuMatch) {
+        menuPath = menuMatch[1].trim();
+        contentStartIndex = i + 1;
+        continue;
       }
-      if (!frontmatter.category) {
-        frontmatter.category = 'geral';
+      
+      // [Rota: /escola/:slug/painel]
+      const routeMatch = line.match(/^\[Rota:\s*(.+?)\]$/i);
+      if (routeMatch) {
+        route = routeMatch[1].trim();
+        contentStartIndex = i + 1;
+        continue;
       }
+      
+      // Se a linha não é metadado e não está vazia, parar de buscar
+      if (line && !line.startsWith('[')) {
+        break;
+      }
+    }
 
-      return {
-        frontmatter,
-        content: markdownContent.trim(),
-      };
-    } catch (error: any) {
-      this.logger.warn(
-        `Erro ao parsear frontmatter de ${filePath}: ${error.message}`,
+    // Se encontrou pelo menos o título, usar formato customizado
+    if (title) {
+      const category = this.inferCategoryFromPath(filePath);
+      const markdownContent = lines.slice(contentStartIndex).join('\n').trim();
+      
+      this.logger.debug(
+        `Parsed custom format: title="${title}", menu="${menuPath}", route="${route}", category="${category}"`,
         'IngestionService',
       );
-      const fileName = path.basename(filePath, '.md');
+
       return {
         frontmatter: {
           id: fileName,
-          title: fileName,
-          category: 'geral',
+          title,
+          category,
+          route: route || undefined,
+          menuPath: menuPath || undefined,
         },
-        content: markdownContent.trim(),
+        content: markdownContent,
       };
     }
+
+    return null;
+  }
+
+  /**
+   * Infere categoria baseada no caminho do arquivo
+   */
+  private inferCategoryFromPath(filePath: string): 'ia' | 'dashboard' | 'academico' | 'administracao' | 'calendario' | 'sites' | 'documentos' | 'configuracoes' | 'geral' {
+    const pathLower = filePath.toLowerCase();
+    
+    if (pathLower.includes('/dashboard/') || pathLower.includes('/painel/')) {
+      return 'dashboard';
+    }
+    if (pathLower.includes('/ia/') || pathLower.includes('/agente')) {
+      return 'ia';
+    }
+    if (pathLower.includes('/academico/') || pathLower.includes('/turmas/') || pathLower.includes('/alunos/')) {
+      return 'academico';
+    }
+    if (pathLower.includes('/administracao/') || pathLower.includes('/admin/')) {
+      return 'administracao';
+    }
+    if (pathLower.includes('/calendario/') || pathLower.includes('/eventos/')) {
+      return 'calendario';
+    }
+    if (pathLower.includes('/sites/')) {
+      return 'sites';
+    }
+    if (pathLower.includes('/documentos/')) {
+      return 'documentos';
+    }
+    if (pathLower.includes('/configuracoes/') || pathLower.includes('/config/')) {
+      return 'configuracoes';
+    }
+    
+    return 'geral';
   }
 
   /**

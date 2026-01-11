@@ -51,15 +51,18 @@ export class KnowledgeRetrievalService {
       const vectorStr = this.embeddingService.embeddingToVector(embedding);
 
       // 2. Chamar função RPC do Supabase
+      // Nota: match_rag_chunks não suporta category_filter, filtramos depois
       const client = this.supabase.getClient();
       const { data: results, error } = await client.rpc('match_rag_chunks', {
         query_embedding: vectorStr,
         match_threshold: similarityThreshold,
-        match_count: topK,
-        category_filter: category || null,
+        match_count: category ? topK * 2 : topK, // Buscar mais se vai filtrar por categoria
       });
 
-      if (error) throw error;
+      if (error) {
+        this.logger.error(`Erro na RPC match_rag_chunks: ${error.message}`, error);
+        throw error;
+      }
 
       this.logger.log(
         `Busca semântica retornou ${results?.length || 0} resultados`,
@@ -127,6 +130,9 @@ export class KnowledgeRetrievalService {
 
       // 2. Chamar função RPC de busca híbrida do Supabase
       const client = this.supabase.getClient();
+      
+      this.logger.debug(`Chamando hybrid_rag_search com: query_text="${query.substring(0, 30)}...", match_count=${topK}, category=${category || 'null'}`);
+      
       const { data: results, error } = await client.rpc('hybrid_rag_search', {
         query_text: query,
         query_embedding: vectorStr,
@@ -134,10 +140,21 @@ export class KnowledgeRetrievalService {
         category_filter: category || null,
       });
 
-      if (error) throw error;
+      if (error) {
+        this.logger.error(`Erro na RPC hybrid_rag_search: ${error.message}`, error);
+        throw error;
+      }
+      
       this.logger.log(
         `Busca híbrida retornou ${results?.length || 0} resultados`,
       );
+      
+      // Log detalhado dos resultados para debug
+      if (results && results.length > 0) {
+        this.logger.debug(`Primeiros resultados: ${results.slice(0, 3).map((r: any) => `"${r.doc_title}" (${(r.similarity * 100).toFixed(1)}%)`).join(', ')}`);
+      } else {
+        this.logger.warn(`Nenhum resultado encontrado para: "${query}"`);
+      }
 
       // Filtrar por categoria e tags se especificado
       const filtered = (results || []).filter((row: any) => {
