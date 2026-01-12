@@ -117,15 +117,24 @@ export class NavigationTool {
           // Build suggestions with complete URLs
           const suggestions = scoredDocs.map((doc) => {
             // Build complete URL using UrlBuilderService
-            const fullUrl = this.urlBuilder.buildFullUrl(doc.route_pattern, {
+            let fullUrl: string | undefined = this.urlBuilder.buildFullUrl(doc.route_pattern, {
               schoolSlug: context.schoolSlug,
               requestOrigin: context.requestOrigin,
             });
             
             // Also build the resolved route (without domain) for internal navigation
-            let resolvedRoute = doc.route_pattern;
+            let resolvedRoute: string | undefined = doc.route_pattern;
             if (context.schoolSlug && resolvedRoute) {
               resolvedRoute = resolvedRoute.replace(':slug', context.schoolSlug);
+            }
+            
+            // SAFETY: Never return URLs with unresolved :slug
+            if (fullUrl?.includes(':slug')) {
+              this.logger.warn(`URL contains unresolved :slug - schoolSlug: ${context.schoolSlug}`);
+              fullUrl = undefined; // Don't return broken URLs
+            }
+            if (resolvedRoute?.includes(':slug')) {
+              resolvedRoute = undefined;
             }
             
             return {
@@ -147,7 +156,7 @@ export class NavigationTool {
           throw new Error(`Erro ao buscar páginas: ${error.message}`);
         }
       },
-      // Format output for model
+      // Format output for model - simplified, no URLs (buttons are auto-generated)
       toModelOutput: async ({ input, output }) => {
         if (!output.found || output.suggestions.length === 0) {
           return {
@@ -156,15 +165,14 @@ export class NavigationTool {
           };
         }
 
+        // Only show menu paths, not URLs (buttons will be generated automatically)
         const formattedSuggestions = output.suggestions
           .map((s: any, i: number) => {
             const parts = [`${i + 1}. **${s.title}**`];
             if (s.menuPath) {
               parts.push(`   📍 Menu: ${s.menuPath}`);
             }
-            if (s.url) {
-              parts.push(`   🔗 Link: ${s.url}`);
-            }
+            // Don't show URLs - buttons are auto-generated
             return parts.join('\n');
           })
           .join('\n\n');

@@ -72,7 +72,7 @@ export class EducaIAController {
         `EducaIA stream request: ${dto.messages.length} messages (mode: ${dto.responseMode || 'fast'}, origin: ${requestOrigin})`,
       );
 
-      // Stream using the service
+      // Stream using the service (user data from JWT context - no DB query needed)
       await this.educaIAService.streamChat(
         dto.messages,
         res,
@@ -80,6 +80,7 @@ export class EducaIAController {
           tenantId,
           supabaseId,
           schoolId,
+          schoolSlug: dto.schoolSlug, // Slug from frontend (avoids DB query)
           model: dto.model,
           provider: dto.provider,
           responseMode: dto.responseMode || 'fast',
@@ -87,7 +88,11 @@ export class EducaIAController {
           conversationId: dto.conversationId,
           temperature: dto.temperature,
           maxTokens: dto.maxTokens,
-          requestOrigin, // Para construir URLs dinâmicas
+          requestOrigin,
+          // Inject user context from JWT (avoids database query)
+          userName: user?.user_metadata?.full_name || user?.name || user?.email?.split('@')[0],
+          userEmail: user?.email,
+          userRole: user?.user_metadata?.role || user?.role,
         },
       );
     } catch (error: any) {

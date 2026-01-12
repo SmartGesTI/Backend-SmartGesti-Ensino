@@ -32,4 +32,8 @@ export class EducaIAStreamDto {
 
   @IsOptional()
   maxTokens?: number;
+
+  @IsOptional()
+  @IsString()
+  schoolSlug?: string;
 }
