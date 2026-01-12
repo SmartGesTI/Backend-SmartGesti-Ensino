@@ -52,16 +52,42 @@ export class IngestionService {
       const existing = selectError?.code !== 'PGRST116' ? existingDocs : null;
 
       if (existing && existing.content_hash === contentHash) {
-        this.logger.log(
-          `Documento ${filePath} não mudou, pulando`,
-          'IngestionService',
-        );
+        // Content hasn't changed, but always update metadata (route_pattern, menuPath, tags)
+        const metadataUpdate = {
+          route_pattern: parsed.frontmatter.routePattern || parsed.frontmatter.route || null,
+          menu_path: parsed.frontmatter.menuPath || null,
+          tags: parsed.frontmatter.tags || [],
+        };
+        
+        // Check if metadata actually changed
+        const metadataChanged = 
+          existing.route_pattern !== metadataUpdate.route_pattern ||
+          existing.menu_path !== metadataUpdate.menu_path;
+        
+        if (metadataChanged) {
+          await client
+            .from('rag_documents')
+            .update(metadataUpdate)
+            .eq('id', existing.id);
+          this.logger.log(
+            `Documento ${filePath} - metadados atualizados (route: ${metadataUpdate.route_pattern})`,
+            'IngestionService',
+          );
+        } else {
+          this.logger.log(
+            `Documento ${filePath} não mudou, pulando`,
+            'IngestionService',
+          );
+        }
+        
         return {
           success: true,
           documentId: existing.id,
           title: existing.title,
           chunksCreated: 0,
-          message: 'Documento não mudou, nenhuma atualização necessária',
+          message: metadataChanged 
+            ? 'Metadados atualizados (conteúdo não mudou)' 
+            : 'Documento não mudou, nenhuma atualização necessária',
         };
       }
 
@@ -102,7 +128,7 @@ export class IngestionService {
         title: parsed.frontmatter.title,
         file_path: filePath,
         category: parsed.frontmatter.category,
-        route_pattern: parsed.frontmatter.route || null,
+        route_pattern: parsed.frontmatter.routePattern || parsed.frontmatter.route || null,
         menu_path: parsed.frontmatter.menuPath || null,
         tags: parsed.frontmatter.tags || [],
         metadata: {

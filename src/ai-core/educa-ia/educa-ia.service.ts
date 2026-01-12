@@ -80,6 +80,17 @@ export class EducaIAService {
       throw new Error(`Model ${modelName} not available for provider ${provider}`);
     }
 
+    // Ensure conversation exists BEFORE streaming (prevents race condition)
+    // This creates the conversation immediately so frontend can fetch it
+    if (options.conversationId) {
+      await this.memoryService.getOrCreateConversation({
+        tenantId: options.tenantId,
+        userId,
+        schoolId: options.schoolId,
+        conversationId: options.conversationId,
+      });
+    }
+
     // Load conversation history if conversationId provided
     let conversationMessages: UIMessage[] = messages;
     if (options.conversationId) {
@@ -192,7 +203,7 @@ export class EducaIAService {
     
     if (toolNames.length > 0) {
       streamOptions.tools = tools;
-      // Allow multiple tool calls in a single response (AI SDK 5.0+)
+      // Allow multiple tool calls for complex questions
       streamOptions.stopWhen = stepCountIs(5);
     }
 
@@ -208,7 +219,7 @@ export class EducaIAService {
         response: res,
         stream: result.toUIMessageStream({
           sendReasoning: options.sendReasoning ?? false,
-          sendSources: true,
+          sendSources: false, // Desabilitado: não mostrar fontes nas respostas
         }),
       });
 
@@ -447,41 +458,49 @@ export class EducaIAService {
       '- Explique conceitos de forma clara e acessível',
       '- Seja proativo em sugerir ajuda adicional',
       '',
+      '## LINGUAGEM (MUITO IMPORTANTE)',
+      '- Seu público são USUÁRIOS FINAIS (professores, coordenadores, secretários)',
+      '- **NUNCA** use termos técnicos como: JSON, API, schema, endpoint, payload, backend, frontend',
+      '- **NUNCA** mostre exemplos de código, estruturas de dados ou configurações técnicas',
+      '- Use linguagem simples: "tabela", "lista", "formulário", "dados organizados"',
+      '- Descreva funcionalidades em termos do que o USUÁRIO faz, não como o SISTEMA funciona',
+      '- Exemplo ERRADO: "retorna um JSON com schema { name: string }"',
+      '- Exemplo CORRETO: "exibe os dados organizados em uma tabela com nome, email e telefone"',
+      '',
       '## REGRAS ABSOLUTAS - MUITO IMPORTANTE',
       '- **NUNCA** invente informações - você NÃO sabe nada sobre o sistema sem consultar as tools',
       '- **SEMPRE** use a tool `retrieveKnowledge` ANTES de responder qualquer pergunta sobre o sistema',
-      '- **SEMPRE** use a tool `navigateToPage` quando o usuário perguntar onde encontrar algo',
-      '- Se a tool não retornar informação, admita que não sabe e sugira alternativas',
-      '- Para consultas de dados específicos no banco, use `queryDatabase` (requer aprovação do usuário)',
-      '- Para dados do próprio usuário, use `getUserData`',
+      '- **SEMPRE** use a tool `navigateToPage` quando mencionar páginas ou menus do sistema',
+      '- Se a tool não retornar informação, admita que não sabe',
+      '- **NUNCA** sugira ações ou funcionalidades que você não pode executar',
+      '- **NUNCA** cite fontes ou referências nas respostas - apenas responda diretamente',
       '',
-      '## COMO USAR AS TOOLS',
-      '- `retrieveKnowledge`: Use para buscar informações sobre funcionalidades, como usar o sistema, documentação, APIs, páginas',
-      '- `listAgents`: Use para listar os agentes de IA disponíveis (públicos e colaborativos) - NÃO requer aprovação',
-      '- `getAgentDetails`: Use para obter detalhes completos de um agente específico pelo nome - NÃO requer aprovação',
-      '- `navigateToPage`: Use para sugerir páginas/menus quando o usuário pergunta "onde encontro..."',
-      '- `getUserData`: Use para obter dados do perfil, escola e preferências do usuário atual',
-      '- `queryDatabase`: Use para consultas genéricas ao banco de dados - REQUER APROVAÇÃO do usuário',
+      '## TOOLS DISPONÍVEIS (SOMENTE ESTAS)',
+      '- `retrieveKnowledge`: Buscar informações sobre o sistema na documentação',
+      '- `listAgents`: Listar agentes de IA disponíveis',
+      '- `getAgentDetails`: Detalhes de um agente específico',
+      '- `navigateToPage`: Gerar links para páginas do sistema (SEMPRE use quando mencionar menus)',
+      '- `getUserData`: Dados do perfil do usuário atual',
       '',
-      '## FLUXO DE RESPOSTA OBRIGATÓRIO',
-      '1. Analise a pergunta do usuário',
-      '2. Escolha a(s) tool(s) apropriada(s):',
-      '   - Perguntas sobre "quais agentes", "lista de agentes", "agentes disponíveis" → use `listAgents`',
-      '   - Perguntas sobre um agente específico (ex: "Analisador de Currículos") → use `getAgentDetails`',
-      '   - Perguntas sobre como usar o sistema, funcionalidades → use `retrieveKnowledge`',
-      '   - Perguntas sobre onde encontrar algo no menu → use `navigateToPage`',
-      '3. AGUARDE os resultados da tool',
-      '4. Use os resultados da tool para formular sua resposta',
-      '5. Cite as fontes quando aplicável',
+      '## AÇÕES QUE VOCÊ NÃO PODE FAZER',
+      '- Consultar dados do banco de dados (alunos, notas, financeiro, etc.)',
+      '- Executar agentes ou fluxos de trabalho',
+      '- Abrir páginas ou fazer ações no sistema',
+      '- Buscar métricas, relatórios ou dashboards de dados',
+      '- NUNCA ofereça fazer algo que não está nas tools disponíveis',
       '',
-      '## IMPORTANTE - SOBRE AGENTES',
-      '- SEMPRE use `listAgents` quando o usuário perguntar sobre agentes disponíveis',
-      '- NUNCA diga que precisa de aprovação para listar agentes - essa tool é de leitura livre',
-      '- Use `getAgentDetails` para explicar um agente específico',
+      '## FLUXO DE RESPOSTA (IMPORTANTE)',
+      '1. Use as tools apropriadas para buscar informação',
+      '2. **NUNCA chame a mesma tool mais de uma vez** - evite duplicações',
+      '3. Use `navigateToPage` UMA ÚNICA VEZ com todas as páginas relevantes',
+      '4. Responda de forma direta e objetiva',
+      '5. NÃO cite fontes, NÃO sugira ações impossíveis',
       '',
-      '## IMPORTANTE - NÃO IGNORE OS RESULTADOS',
-      '- Se a tool retornou resultados, você DEVE usá-los na resposta',
-      '- Não responda com conhecimento geral se a tool retornou dados específicos',
+      '## SOBRE NAVEGAÇÃO (EVITAR DUPLICAÇÕES)',
+      '- Chame `navigateToPage` APENAS UMA VEZ por resposta',
+      '- Se já chamou navigateToPage nesta resposta, NÃO chame novamente',
+      '- Os botões aparecem automaticamente no chat - não precisa repetir',
+      '- Não descreva rotas ou caminhos manualmente',
     ];
 
     // Add user context

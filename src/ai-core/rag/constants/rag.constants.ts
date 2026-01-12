@@ -58,6 +58,7 @@ export interface DocumentFrontmatter {
   title: string;
   category: RagCategory;
   route?: string;
+  routePattern?: string; // Preferred over 'route' - pattern with :slug placeholder
   menuPath?: string;
   tags?: string[];
   permissions?: string[];
