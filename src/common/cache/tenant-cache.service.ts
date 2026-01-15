@@ -29,10 +29,10 @@ export interface CachedSchool {
 export class TenantCacheService {
   // Cache de tenants: subdomain -> CachedTenant
   private readonly tenantCache = new Map<string, CachedTenant>();
-  
+
   // Cache de escolas: `${tenantId}:${slug}` -> CachedSchool
   private readonly schoolCache = new Map<string, CachedSchool>();
-  
+
   // TTL do cache em ms (1 hora - subdomínios raramente mudam)
   private readonly CACHE_TTL = 60 * 60 * 1000;
 
@@ -58,7 +58,8 @@ export class TenantCacheService {
     console.log('[TenantCacheService] Tenant cache MISS:', subdomain);
 
     // Buscar no banco
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('tenants')
       .select('id, subdomain')
       .eq('subdomain', subdomain)
@@ -92,7 +93,7 @@ export class TenantCacheService {
     }
 
     const cacheKey = `${tenantId}:${slug}`;
-    
+
     // Verificar cache
     const cached = this.schoolCache.get(cacheKey);
     if (cached && !this.isExpired(cached.cachedAt)) {
@@ -103,7 +104,8 @@ export class TenantCacheService {
     console.log('[TenantCacheService] School cache MISS:', cacheKey);
 
     // Buscar no banco
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('schools')
       .select('id, slug, tenant_id')
       .eq('tenant_id', tenantId)
@@ -155,7 +157,7 @@ export class TenantCacheService {
    */
   invalidateTenant(subdomain: string): void {
     this.tenantCache.delete(subdomain);
-    
+
     // Também invalidar escolas desse tenant
     for (const [key, school] of this.schoolCache.entries()) {
       const cached = this.tenantCache.get(subdomain);
@@ -184,7 +186,8 @@ export class TenantCacheService {
    * Verifica se é UUID válido
    */
   private isUuid(value: string): boolean {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return uuidRegex.test(value);
   }
 

@@ -18,7 +18,13 @@ import {
 } from './create-agent.dto';
 
 // Re-exportar os enums para facilitar o uso
-export { AgentType, AgentVisibility, AgentCategory, AgentDifficulty, AgentStatus } from './create-agent.dto';
+export {
+  AgentType,
+  AgentVisibility,
+  AgentCategory,
+  AgentDifficulty,
+  AgentStatus,
+} from './create-agent.dto';
 
 export class UpdateAgentDto {
   @IsString()

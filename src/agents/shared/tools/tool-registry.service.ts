@@ -13,7 +13,10 @@ export class ToolRegistryService {
    */
   register(tool: Tool): void {
     if (this.tools.has(tool.name)) {
-      this.logger.warn(`Tool ${tool.name} já está registrada. Substituindo...`, 'ToolRegistryService');
+      this.logger.warn(
+        `Tool ${tool.name} já está registrada. Substituindo...`,
+        'ToolRegistryService',
+      );
     }
     this.tools.set(tool.name, tool);
     this.logger.log(`Tool registrada: ${tool.name}`, 'ToolRegistryService');

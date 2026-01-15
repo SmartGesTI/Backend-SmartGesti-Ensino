@@ -1,4 +1,8 @@
-import { WorkflowConfig, WorkflowContext, WorkflowResult } from '../workflow.types';
+import {
+  WorkflowConfig,
+  WorkflowContext,
+  WorkflowResult,
+} from '../workflow.types';
 
 export class OrchestratorWorkflow {
   async execute(
@@ -18,7 +22,10 @@ export class OrchestratorWorkflow {
       // Executar orchestrator
       let orchestratorResult: any;
       if (orchestratorStep.agent) {
-        orchestratorResult = { agent: orchestratorStep.agent, input: orchestratorStep.input };
+        orchestratorResult = {
+          agent: orchestratorStep.agent,
+          input: orchestratorStep.input,
+        };
       } else {
         throw new Error('Orchestrator step must have an agent');
       }

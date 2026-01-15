@@ -106,7 +106,11 @@ export class TagsService {
     const { data, error } = await query.maybeSingle();
 
     if (error) {
-      this.logger.error('Erro ao buscar tag por slug', error.message, 'TagsService');
+      this.logger.error(
+        'Erro ao buscar tag por slug',
+        error.message,
+        'TagsService',
+      );
       return null;
     }
 
@@ -123,7 +127,9 @@ export class TagsService {
 
     const existing = await this.findBySlug(slug, tenantId, category);
     if (existing) {
-      throw new ConflictException(`Tag "${createTagDto.name}" já existe nesta categoria`);
+      throw new ConflictException(
+        `Tag "${createTagDto.name}" já existe nesta categoria`,
+      );
     }
 
     const { data, error } = await this.supabase
@@ -237,7 +243,11 @@ export class TagsService {
       await this.supabase
         .getClient()
         .from('tags')
-        .update({ usage_count: this.supabase.getClient().rpc('coalesce', { value: 'usage_count', default_value: 0 }) })
+        .update({
+          usage_count: this.supabase
+            .getClient()
+            .rpc('coalesce', { value: 'usage_count', default_value: 0 }),
+        })
         .eq('id', id)
         .eq('tenant_id', tenantId);
     }
@@ -254,7 +264,7 @@ export class TagsService {
     for (const name of tagNames) {
       const slug = this.generateSlug(name);
       const tag = await this.findBySlug(slug, tenantId, category);
-      
+
       if (tag) {
         await this.supabase
           .getClient()

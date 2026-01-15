@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
@@ -25,7 +30,9 @@ export class ServiceKeyGuard implements CanActivate {
         undefined,
         'ServiceKeyGuard',
       );
-      throw new UnauthorizedException('Service key validation is not configured');
+      throw new UnauthorizedException(
+        'Service key validation is not configured',
+      );
     }
 
     // Comparação segura usando timing-safe comparison

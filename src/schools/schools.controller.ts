@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  ForbiddenException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { SchoolsService } from './schools.service';
 import { JwtAuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -28,21 +40,27 @@ export class SchoolsController {
   ): Promise<School[]> {
     // OBRIGATÓRIO: subdomain define o tenant - isolamento de dados
     if (!subdomain) {
-      this.logger.warn('Schools request without subdomain', 'SchoolsController', { userSub: user.sub });
+      this.logger.warn(
+        'Schools request without subdomain',
+        'SchoolsController',
+        { userSub: user.sub },
+      );
       return [];
     }
 
     // Buscar tenant pelo subdomain - SEMPRE usar subdomain, nunca o tenant_id do usuário
     const tenant = await this.tenantsService.getTenantBySubdomain(subdomain);
     if (!tenant) {
-      this.logger.warn('Tenant not found for subdomain', 'SchoolsController', { subdomain });
+      this.logger.warn('Tenant not found for subdomain', 'SchoolsController', {
+        subdomain,
+      });
       return [];
     }
 
-    this.logger.log('Fetching schools for tenant', 'SchoolsController', { 
-      subdomain, 
+    this.logger.log('Fetching schools for tenant', 'SchoolsController', {
+      subdomain,
       tenantId: tenant.id,
-      userSub: user.sub 
+      userSub: user.sub,
     });
 
     // Retornar apenas escolas do tenant do subdomain
@@ -60,17 +78,21 @@ export class SchoolsController {
     }
 
     const school = await this.schoolsService.getCurrentSchool(dbUser.id);
-    
+
     // Validar que a escola pertence ao tenant do subdomain
     if (school && subdomain) {
       const tenant = await this.tenantsService.getTenantBySubdomain(subdomain);
       if (tenant && school.tenant_id !== tenant.id) {
         // Escola não pertence a este tenant - retornar null
-        this.logger.warn('User current school does not belong to this tenant', 'SchoolsController', {
-          subdomain,
-          schoolTenantId: school.tenant_id,
-          requestedTenantId: tenant.id,
-        });
+        this.logger.warn(
+          'User current school does not belong to this tenant',
+          'SchoolsController',
+          {
+            subdomain,
+            schoolTenantId: school.tenant_id,
+            requestedTenantId: tenant.id,
+          },
+        );
         return null;
       }
     }
@@ -101,13 +123,20 @@ export class SchoolsController {
     }
 
     if (school.tenant_id !== tenant.id) {
-      this.logger.error('Attempt to access school from different tenant', undefined, 'SchoolsController', {
-        subdomain,
-        schoolId: body.school_id,
-        schoolTenantId: school.tenant_id,
-        requestedTenantId: tenant.id,
-      });
-      throw new ForbiddenException('School does not belong to this institution');
+      this.logger.error(
+        'Attempt to access school from different tenant',
+        undefined,
+        'SchoolsController',
+        {
+          subdomain,
+          schoolId: body.school_id,
+          schoolTenantId: school.tenant_id,
+          requestedTenantId: tenant.id,
+        },
+      );
+      throw new ForbiddenException(
+        'School does not belong to this institution',
+      );
     }
 
     const dbUser = await this.usersService.getUserByAuth0Id(user.sub);
@@ -115,7 +144,11 @@ export class SchoolsController {
       throw new BadRequestException('User not found');
     }
 
-    await this.schoolsService.setCurrentSchool(dbUser.id, body.school_id, tenant.id);
+    await this.schoolsService.setCurrentSchool(
+      dbUser.id,
+      body.school_id,
+      tenant.id,
+    );
     return { success: true };
   }
 
@@ -169,7 +202,11 @@ export class SchoolsController {
       userSub: user.sub,
     });
 
-    return this.schoolsService.updateSchool(schoolId, tenant.id, updateSchoolDto);
+    return this.schoolsService.updateSchool(
+      schoolId,
+      tenant.id,
+      updateSchoolDto,
+    );
   }
 
   @Delete(':id')

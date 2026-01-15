@@ -1,4 +1,10 @@
-import { IsString, MinLength, MaxLength, IsOptional, IsUrl } from 'class-validator';
+import {
+  IsString,
+  MinLength,
+  MaxLength,
+  IsOptional,
+  IsUrl,
+} from 'class-validator';
 
 export class CompleteProfileDto {
   @IsString({ message: 'Nome deve ser um texto' })

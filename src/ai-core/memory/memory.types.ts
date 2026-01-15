@@ -16,7 +16,13 @@ export interface Message {
     args: any;
   }>;
   parts?: Array<{
-    type: 'text' | 'tool-call' | 'tool-result' | 'reasoning' | 'tool-approval-request' | 'tool-approval-response';
+    type:
+      | 'text'
+      | 'tool-call'
+      | 'tool-result'
+      | 'reasoning'
+      | 'tool-approval-request'
+      | 'tool-approval-response';
     [key: string]: any;
   }>;
   timestamp?: Date | string;

@@ -30,7 +30,10 @@ export class ToolFactory {
 
           return result;
         } catch (error) {
-          this.logger.error(`Error executing tool ${definition.name}: ${error.message}`, error.stack);
+          this.logger.error(
+            `Error executing tool ${definition.name}: ${error.message}`,
+            error.stack,
+          );
           throw error;
         }
       },

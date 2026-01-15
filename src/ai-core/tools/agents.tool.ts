@@ -31,7 +31,9 @@ export class AgentsTool {
         category: z
           .enum(['academico', 'financeiro', 'rh', 'administrativo', 'todos'])
           .optional()
-          .describe('Categoria para filtrar os agentes (opcional). Use "todos" para não filtrar.'),
+          .describe(
+            'Categoria para filtrar os agentes (opcional). Use "todos" para não filtrar.',
+          ),
         limit: z
           .number()
           .min(1)
@@ -44,7 +46,8 @@ export class AgentsTool {
           if (!context.tenantId) {
             return {
               success: false,
-              message: 'Não foi possível identificar o tenant para listar os agentes.',
+              message:
+                'Não foi possível identificar o tenant para listar os agentes.',
               agents: [],
             };
           }
@@ -53,7 +56,8 @@ export class AgentsTool {
 
           let query = client
             .from('agents')
-            .select(`
+            .select(
+              `
               id,
               name,
               description,
@@ -67,7 +71,8 @@ export class AgentsTool {
               visibility,
               flow,
               workflow
-            `)
+            `,
+            )
             .eq('tenant_id', context.tenantId)
             .eq('is_active', true)
             .neq('visibility', 'private')
@@ -76,7 +81,9 @@ export class AgentsTool {
 
           // Filter by school if provided
           if (context.schoolId) {
-            query = query.or(`school_id.eq.${context.schoolId},school_id.is.null`);
+            query = query.or(
+              `school_id.eq.${context.schoolId},school_id.is.null`,
+            );
           }
 
           // Filter by category if specified and not "todos"
@@ -123,7 +130,9 @@ export class AgentsTool {
             };
           });
 
-          this.logger.log(`Found ${agents.length} public agents for tenant ${context.tenantId}`);
+          this.logger.log(
+            `Found ${agents.length} public agents for tenant ${context.tenantId}`,
+          );
 
           return {
             success: true,
@@ -143,7 +152,8 @@ export class AgentsTool {
         if (!output.success || output.agents.length === 0) {
           return {
             type: 'text',
-            value: output.message || 'Nenhum agente público encontrado no sistema.',
+            value:
+              output.message || 'Nenhum agente público encontrado no sistema.',
           };
         }
 
@@ -166,7 +176,9 @@ export class AgentsTool {
             if (agent.tags && agent.tags.length > 0) {
               parts.push(`   Tags: ${agent.tags.join(', ')}`);
             }
-            parts.push(`   Visibilidade: ${agent.visibility === 'public' ? 'Público' : 'Colaborativo'}`);
+            parts.push(
+              `   Visibilidade: ${agent.visibility === 'public' ? 'Público' : 'Colaborativo'}`,
+            );
             if (agent.flowDescription) {
               parts.push(`   Fluxo: ${agent.flowDescription}`);
             }
@@ -208,7 +220,8 @@ export class AgentsTool {
 
           let query = client
             .from('agents')
-            .select(`
+            .select(
+              `
               id,
               name,
               description,
@@ -224,14 +237,17 @@ export class AgentsTool {
               flow,
               workflow,
               visibility
-            `)
+            `,
+            )
             .eq('tenant_id', context.tenantId)
             .eq('is_active', true)
             .neq('visibility', 'private')
             .ilike('name', `%${agentName}%`);
 
           if (context.schoolId) {
-            query = query.or(`school_id.eq.${context.schoolId},school_id.is.null`);
+            query = query.or(
+              `school_id.eq.${context.schoolId},school_id.is.null`,
+            );
           }
 
           const { data, error } = await query.limit(1).maybeSingle();
@@ -283,7 +299,10 @@ export class AgentsTool {
             },
           };
         } catch (error: any) {
-          this.logger.error(`Agent details tool error: ${error.message}`, error.stack);
+          this.logger.error(
+            `Agent details tool error: ${error.message}`,
+            error.stack,
+          );
           return {
             success: false,
             message: `Erro ao buscar detalhes: ${error.message}`,
@@ -295,7 +314,8 @@ export class AgentsTool {
         if (!output.success || !output.agent) {
           return {
             type: 'text',
-            value: output.message || `Agente "${input.agentName}" não encontrado.`,
+            value:
+              output.message || `Agente "${input.agentName}" não encontrado.`,
           };
         }
 

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoggerService } from '../common/logger/logger.service';
 
@@ -54,10 +58,15 @@ export class SitesService {
       query = query.eq('school_id', schoolId);
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    const { data, error } = await query.order('created_at', {
+      ascending: false,
+    });
 
     if (error) {
-      this.logger.error(`Error fetching sites: ${error.message}`, 'SitesService');
+      this.logger.error(
+        `Error fetching sites: ${error.message}`,
+        'SitesService',
+      );
       throw new BadRequestException('Failed to fetch sites');
     }
 
@@ -111,14 +120,21 @@ export class SitesService {
       .single();
 
     if (error) {
-      this.logger.error(`Error creating site: ${error.message}`, 'SitesService');
+      this.logger.error(
+        `Error creating site: ${error.message}`,
+        'SitesService',
+      );
       throw new BadRequestException('Failed to create site');
     }
 
     return this.mapToSite(data);
   }
 
-  async update(id: string, site: Partial<Site>, projectId: string): Promise<Site> {
+  async update(
+    id: string,
+    site: Partial<Site>,
+    projectId: string,
+  ): Promise<Site> {
     const { data, error } = await this.supabase
       .getClient()
       .from('sites')
@@ -135,7 +151,10 @@ export class SitesService {
       .single();
 
     if (error || !data) {
-      this.logger.error(`Error updating site: ${error?.message}`, 'SitesService');
+      this.logger.error(
+        `Error updating site: ${error?.message}`,
+        'SitesService',
+      );
       throw new NotFoundException(`Site with ID ${id} not found`);
     }
 
@@ -151,7 +170,10 @@ export class SitesService {
       .eq('project_id', projectId);
 
     if (error) {
-      this.logger.error(`Error deleting site: ${error.message}`, 'SitesService');
+      this.logger.error(
+        `Error deleting site: ${error.message}`,
+        'SitesService',
+      );
       throw new BadRequestException('Failed to delete site');
     }
   }
@@ -177,7 +199,10 @@ export class SitesService {
       .single();
 
     if (error || !data) {
-      this.logger.error(`Error publishing site: ${error?.message}`, 'SitesService');
+      this.logger.error(
+        `Error publishing site: ${error?.message}`,
+        'SitesService',
+      );
       throw new BadRequestException('Failed to publish site');
     }
 
@@ -199,7 +224,8 @@ export class SitesService {
     if (page.metadata.description) {
       html += `<meta name="description" content="${this.escapeHtml(page.metadata.description)}">`;
     }
-    html += '<meta name="viewport" content="width=device-width, initial-scale=1">';
+    html +=
+      '<meta name="viewport" content="width=device-width, initial-scale=1">';
     html += '<meta charset="UTF-8">';
     html += '</head><body>';
 
@@ -215,12 +241,13 @@ export class SitesService {
     // Gerar HTML a partir do template da landing page
     let html = '<!DOCTYPE html><html lang="pt-BR"><head>';
     html += `<title>${this.escapeHtml(template.name || siteName)}</title>`;
-    html += '<meta name="viewport" content="width=device-width, initial-scale=1">';
+    html +=
+      '<meta name="viewport" content="width=device-width, initial-scale=1">';
     html += '<meta charset="UTF-8">';
-    
+
     // Incluir CSS da landing page (será servido estaticamente ou inline)
     html += '<link rel="stylesheet" href="/styles/landing-page.css">';
-    
+
     // Aplicar cores customizadas via CSS variables
     if (template.sections && template.sections.length > 0) {
       const firstSection = template.sections[0];
@@ -228,16 +255,18 @@ export class SitesService {
         const colors = firstSection.config.visual.colors;
         html += '<style>:root {';
         if (colors.primary) html += `--lp-primary-color: ${colors.primary};`;
-        if (colors.secondary) html += `--lp-secondary-color: ${colors.secondary};`;
-        if (colors.background) html += `--lp-background-color: ${colors.background};`;
+        if (colors.secondary)
+          html += `--lp-secondary-color: ${colors.secondary};`;
+        if (colors.background)
+          html += `--lp-background-color: ${colors.background};`;
         if (colors.text) html += `--lp-text-color: ${colors.text};`;
         if (colors.accent) html += `--lp-accent-color: ${colors.accent};`;
         html += '}</style>';
       }
     }
-    
+
     html += '</head><body>';
-    
+
     // Renderizar seções do template
     if (template.sections) {
       template.sections.forEach((section: any) => {
@@ -246,7 +275,7 @@ export class SitesService {
         }
       });
     }
-    
+
     html += '</body></html>';
     return html;
   }
@@ -258,9 +287,9 @@ export class SitesService {
     const content = config.content || {};
     const visual = config.visual || {};
     const theme = visual.theme || 'light';
-    
+
     let html = `<section id="${section.type}" class="lp-${section.type} lp-${section.type}-${section.variant}" data-theme="${theme}">`;
-    
+
     // Renderizar conteúdo básico
     if (content.title) {
       html += `<h1>${this.escapeHtml(content.title)}</h1>`;
@@ -271,7 +300,7 @@ export class SitesService {
     if (content.text) {
       html += `<p>${this.escapeHtml(content.text)}</p>`;
     }
-    
+
     html += '</section>';
     return html;
   }
@@ -398,7 +427,10 @@ export class SitesService {
       .rpc('get_next_site_version', { p_site_id: siteId });
 
     if (versionError) {
-      this.logger.error(`Error getting next version: ${versionError.message}`, 'SitesService');
+      this.logger.error(
+        `Error getting next version: ${versionError.message}`,
+        'SitesService',
+      );
       throw new BadRequestException('Failed to get next version');
     }
 
@@ -418,7 +450,10 @@ export class SitesService {
       });
 
     if (saveVersionError) {
-      this.logger.error(`Error saving version: ${saveVersionError.message}`, 'SitesService');
+      this.logger.error(
+        `Error saving version: ${saveVersionError.message}`,
+        'SitesService',
+      );
       throw new BadRequestException('Failed to save version');
     }
 
@@ -440,7 +475,10 @@ export class SitesService {
       .single();
 
     if (updateError || !updatedData) {
-      this.logger.error(`Error updating site: ${updateError?.message}`, 'SitesService');
+      this.logger.error(
+        `Error updating site: ${updateError?.message}`,
+        'SitesService',
+      );
       throw new BadRequestException('Failed to update site');
     }
 
@@ -462,7 +500,10 @@ export class SitesService {
       .order('version', { ascending: false });
 
     if (error) {
-      this.logger.error(`Error fetching versions: ${error.message}`, 'SitesService');
+      this.logger.error(
+        `Error fetching versions: ${error.message}`,
+        'SitesService',
+      );
       throw new BadRequestException('Failed to fetch versions');
     }
 
@@ -518,12 +559,16 @@ export class SitesService {
     }
 
     // Criar nova versão de rollback
-    const { data: nextVersionData, error: nextVersionError } = await this.supabase
-      .getClient()
-      .rpc('get_next_site_version', { p_site_id: siteId });
+    const { data: nextVersionData, error: nextVersionError } =
+      await this.supabase
+        .getClient()
+        .rpc('get_next_site_version', { p_site_id: siteId });
 
     if (nextVersionError) {
-      this.logger.error(`Error getting next version: ${nextVersionError.message}`, 'SitesService');
+      this.logger.error(
+        `Error getting next version: ${nextVersionError.message}`,
+        'SitesService',
+      );
       throw new BadRequestException('Failed to get next version');
     }
 
@@ -544,7 +589,10 @@ export class SitesService {
       });
 
     if (saveVersionError) {
-      this.logger.error(`Error saving rollback version: ${saveVersionError.message}`, 'SitesService');
+      this.logger.error(
+        `Error saving rollback version: ${saveVersionError.message}`,
+        'SitesService',
+      );
       throw new BadRequestException('Failed to save rollback version');
     }
 
@@ -562,7 +610,10 @@ export class SitesService {
       .single();
 
     if (updateError || !updatedData) {
-      this.logger.error(`Error updating site: ${updateError?.message}`, 'SitesService');
+      this.logger.error(
+        `Error updating site: ${updateError?.message}`,
+        'SitesService',
+      );
       throw new BadRequestException('Failed to update site');
     }
 

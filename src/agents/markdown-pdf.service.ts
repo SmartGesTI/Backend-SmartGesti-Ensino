@@ -207,7 +207,10 @@ export class MarkdownPdfService implements OnModuleDestroy {
 </div>`;
   }
 
-  async renderPdfFromMarkdown(markdown: string, ctx: PdfRenderContext): Promise<Buffer> {
+  async renderPdfFromMarkdown(
+    markdown: string,
+    ctx: PdfRenderContext,
+  ): Promise<Buffer> {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
 
@@ -215,7 +218,9 @@ export class MarkdownPdfService implements OnModuleDestroy {
       const safeHtml = this.markdownToSafeHtml(markdown);
       const html = this.buildHtmlDocument(safeHtml);
 
-      await page.setContent(html, { waitUntil: ['domcontentloaded', 'networkidle0'] });
+      await page.setContent(html, {
+        waitUntil: ['domcontentloaded', 'networkidle0'],
+      });
 
       const pdf = await page.pdf({
         format: 'A4',
@@ -233,7 +238,10 @@ export class MarkdownPdfService implements OnModuleDestroy {
 
       return Buffer.from(pdf);
     } catch (err: any) {
-      this.logger.error('Erro ao renderizar PDF com Puppeteer', err?.message || err);
+      this.logger.error(
+        'Erro ao renderizar PDF com Puppeteer',
+        err?.message || err,
+      );
       throw err;
     } finally {
       await page.close();

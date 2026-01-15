@@ -23,8 +23,8 @@ export class LoggingInterceptor implements NestInterceptor {
     const logContext = `${method} ${url}`;
 
     // Não logar requisições duplicadas ou de health check
-    const shouldSkipLog = 
-      url.includes('/health') || 
+    const shouldSkipLog =
+      url.includes('/health') ||
       url.includes('/favicon.ico') ||
       headers['x-skip-log'] === 'true';
 
@@ -44,10 +44,10 @@ export class LoggingInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap((data) => {
         if (shouldSkipLog) return;
-        
+
         const responseTime = Date.now() - startTime;
         const statusCode = context.switchToHttp().getResponse().statusCode;
-        
+
         // Apenas logar requisições lentas (> 1s) ou em modo debug
         if (responseTime > 1000 || process.env.LOG_LEVEL === 'debug') {
           this.logger.log('Request completed', logContext, {
@@ -60,7 +60,7 @@ export class LoggingInterceptor implements NestInterceptor {
       }),
       catchError((error) => {
         const responseTime = Date.now() - startTime;
-        
+
         // SEMPRE logar erros
         this.logger.error(
           `Request failed: ${error.message}`,
@@ -77,7 +77,7 @@ export class LoggingInterceptor implements NestInterceptor {
             params,
           },
         );
-        
+
         return throwError(() => error);
       }),
     );
@@ -87,7 +87,13 @@ export class LoggingInterceptor implements NestInterceptor {
     if (!body) return body;
     const sanitized = { ...body };
     // Remover campos sensíveis
-    const sensitiveFields = ['password', 'token', 'secret', 'apiKey', 'authorization'];
+    const sensitiveFields = [
+      'password',
+      'token',
+      'secret',
+      'apiKey',
+      'authorization',
+    ];
     sensitiveFields.forEach((field) => {
       if (sanitized[field]) {
         sanitized[field] = '***REDACTED***';

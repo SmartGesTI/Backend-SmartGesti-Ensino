@@ -1,4 +1,8 @@
-import { WorkflowConfig, WorkflowContext, WorkflowResult } from '../workflow.types';
+import {
+  WorkflowConfig,
+  WorkflowContext,
+  WorkflowResult,
+} from '../workflow.types';
 
 export class ParallelWorkflow {
   async execute(

@@ -56,12 +56,16 @@ export class UserDataTool {
           if (dataType === 'profile' || dataType === 'all') {
             const { data: userData, error: userError } = await client
               .from('users')
-              .select('id, full_name, email, role, avatar_url, ai_context, ai_summary, created_at')
+              .select(
+                'id, full_name, email, role, avatar_url, ai_context, ai_summary, created_at',
+              )
               .eq('id', context.userId)
               .single();
 
             if (userError) {
-              this.logger.warn(`Error fetching user profile: ${userError.message}`);
+              this.logger.warn(
+                `Error fetching user profile: ${userError.message}`,
+              );
             } else {
               result.profile = {
                 name: userData.full_name,
@@ -84,7 +88,9 @@ export class UserDataTool {
                 .single();
 
               if (schoolError) {
-                this.logger.warn(`Error fetching school: ${schoolError.message}`);
+                this.logger.warn(
+                  `Error fetching school: ${schoolError.message}`,
+                );
               } else {
                 result.school = {
                   id: schoolData.id,
@@ -110,7 +116,9 @@ export class UserDataTool {
               .single();
 
             if (prefError) {
-              this.logger.warn(`Error fetching preferences: ${prefError.message}`);
+              this.logger.warn(
+                `Error fetching preferences: ${prefError.message}`,
+              );
               result.preferences = {};
             } else {
               result.preferences = userData.ai_context || {};
@@ -123,7 +131,10 @@ export class UserDataTool {
             data: result,
           };
         } catch (error: any) {
-          this.logger.error(`UserData tool error: ${error.message}`, error.stack);
+          this.logger.error(
+            `UserData tool error: ${error.message}`,
+            error.stack,
+          );
           throw new Error(`Erro ao buscar dados do usuário: ${error.message}`);
         }
       },
@@ -132,7 +143,8 @@ export class UserDataTool {
         if (!output.success || !output.data) {
           return {
             type: 'text',
-            value: output.message || 'Não foi possível obter os dados do usuário.',
+            value:
+              output.message || 'Não foi possível obter os dados do usuário.',
           };
         }
 
@@ -162,7 +174,10 @@ export class UserDataTool {
           parts.push('\n**Escola:** Nenhuma escola vinculada.');
         }
 
-        if (output.data.preferences && Object.keys(output.data.preferences).length > 0) {
+        if (
+          output.data.preferences &&
+          Object.keys(output.data.preferences).length > 0
+        ) {
           parts.push('\n**Preferências de IA:**');
           for (const [key, value] of Object.entries(output.data.preferences)) {
             parts.push(`- ${key}: ${JSON.stringify(value)}`);

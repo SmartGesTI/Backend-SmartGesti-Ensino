@@ -41,7 +41,9 @@ export class RAGTool {
       inputSchema: z.object({
         query: z
           .string()
-          .describe('A pergunta ou termo de busca para encontrar informações na base de conhecimento'),
+          .describe(
+            'A pergunta ou termo de busca para encontrar informações na base de conhecimento',
+          ),
         topK: z
           .number()
           .min(1)
@@ -51,7 +53,9 @@ export class RAGTool {
         category: z
           .string()
           .optional()
-          .describe('Categoria específica para filtrar resultados (ex: "api", "ui", "config")'),
+          .describe(
+            'Categoria específica para filtrar resultados (ex: "api", "ui", "config")',
+          ),
       }),
       execute: async ({ query, topK, category }) => {
         try {
@@ -87,7 +91,9 @@ export class RAGTool {
           };
         } catch (error: any) {
           this.logger.error(`RAG tool error: ${error.message}`, error.stack);
-          throw new Error(`Erro ao buscar na base de conhecimento: ${error.message}`);
+          throw new Error(
+            `Erro ao buscar na base de conhecimento: ${error.message}`,
+          );
         }
       },
       // Use toModelOutput to send only relevant content to the model, reducing tokens
@@ -130,7 +136,8 @@ export class RAGTool {
           })
           .join('\n\n---\n\n');
 
-        const modeLabel = mode === 'fast' ? '(modo rápido)' : '(modo detalhado)';
+        const modeLabel =
+          mode === 'fast' ? '(modo rápido)' : '(modo detalhado)';
         const showMoreNote =
           output.count > maxResults
             ? `\n\n(mostrando os ${maxResults} mais relevantes de ${output.count} resultados)`

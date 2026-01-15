@@ -5,6 +5,11 @@ export class UserStatusDto {
   isOwner: boolean;
   emailVerified: boolean;
   hasCompletedProfile: boolean;
-  status: 'active' | 'pending' | 'blocked' | 'incomplete_profile' | 'email_unverified';
+  status:
+    | 'active'
+    | 'pending'
+    | 'blocked'
+    | 'incomplete_profile'
+    | 'email_unverified';
   message?: string;
 }

@@ -18,17 +18,23 @@ export class DocumentTextExtractorService {
    * Extrai texto de `inputData.file` ou `inputData.files[]`.
    * Retorna string vazia se não houver arquivos.
    */
-  async extractTextFromInput(inputData: any): Promise<{ text: string; filesProcessed: number }>
-  {
+  async extractTextFromInput(
+    inputData: any,
+  ): Promise<{ text: string; filesProcessed: number }> {
     const files: AgentInputFile[] = [];
 
-    if (inputData?.file && typeof inputData.file === 'object' && inputData.file.data) {
+    if (
+      inputData?.file &&
+      typeof inputData.file === 'object' &&
+      inputData.file.data
+    ) {
       files.push(inputData.file as AgentInputFile);
     }
 
     if (Array.isArray(inputData?.files)) {
       for (const f of inputData.files) {
-        if (f && typeof f === 'object' && f.data) files.push(f as AgentInputFile);
+        if (f && typeof f === 'object' && f.data)
+          files.push(f as AgentInputFile);
       }
     }
 
@@ -51,7 +57,9 @@ export class DocumentTextExtractorService {
         }
       } catch (err: any) {
         const name = file.name || 'documento';
-        this.logger.warn(`Falha ao extrair texto do arquivo ${name}: ${err?.message || err}`);
+        this.logger.warn(
+          `Falha ao extrair texto do arquivo ${name}: ${err?.message || err}`,
+        );
         parts.push(`--- Arquivo: ${name} ---\n(erro ao extrair texto)`);
       }
     }
@@ -59,7 +67,8 @@ export class DocumentTextExtractorService {
     // Proteção simples contra payloads enormes
     const combined = parts.join('\n\n');
     const MAX_CHARS = 150_000;
-    const capped = combined.length > MAX_CHARS ? combined.slice(0, MAX_CHARS) : combined;
+    const capped =
+      combined.length > MAX_CHARS ? combined.slice(0, MAX_CHARS) : combined;
 
     return { text: capped, filesProcessed: files.length };
   }
@@ -110,7 +119,11 @@ export class DocumentTextExtractorService {
     }
 
     // DOCX
-    if (ext === 'docx' || mt.includes('wordprocessingml') || mt.includes('msword')) {
+    if (
+      ext === 'docx' ||
+      mt.includes('wordprocessingml') ||
+      mt.includes('msword')
+    ) {
       const res = await mammoth.extractRawText({ buffer });
       return res?.value || '';
     }
@@ -134,7 +147,9 @@ export class DocumentTextExtractorService {
       return sheetTexts.join('\n\n');
     }
 
-    this.logger.warn(`Formato não suportado para extração: ext=${ext || '-'} mime=${mt || '-'}`);
+    this.logger.warn(
+      `Formato não suportado para extração: ext=${ext || '-'} mime=${mt || '-'}`,
+    );
     return '';
   }
 }

@@ -10,9 +10,12 @@ export class AiCacheService implements OnModuleDestroy {
 
   constructor(private readonly aiConfig: AiCoreConfigService) {
     // Limpar cache expirado a cada 5 minutos
-    this.cleanupInterval = setInterval(() => {
-      this.cleanupExpired();
-    }, 5 * 60 * 1000);
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanupExpired();
+      },
+      5 * 60 * 1000,
+    );
   }
 
   /**

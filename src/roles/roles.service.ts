@@ -26,7 +26,8 @@ export class RolesService {
    * Lista todos os cargos (sistema + customizados do tenant)
    */
   async findAll(tenantId: string) {
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('roles')
       .select('*')
       .or(`tenant_id.eq.${tenantId},tenant_id.is.null`)
@@ -43,7 +44,8 @@ export class RolesService {
    * Busca um cargo por ID
    */
   async findOne(id: string, tenantId: string) {
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('roles')
       .select('*')
       .eq('id', id)
@@ -62,7 +64,8 @@ export class RolesService {
    */
   async create(tenantId: string, createRoleDto: CreateRoleDto) {
     // Verificar se já existe cargo com esse slug no tenant
-    const { data: existing } = await this.supabase.getClient()
+    const { data: existing } = await this.supabase
+      .getClient()
       .from('roles')
       .select('id')
       .eq('tenant_id', tenantId)
@@ -75,7 +78,8 @@ export class RolesService {
       );
     }
 
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('roles')
       .insert({
         tenant_id: tenantId,
@@ -110,7 +114,8 @@ export class RolesService {
       );
     }
 
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('roles')
       .update({
         name: updateRoleDto.name,
@@ -144,7 +149,8 @@ export class RolesService {
     }
 
     // Verificar se há usuários com este cargo
-    const { data: usersWithRole } = await this.supabase.getClient()
+    const { data: usersWithRole } = await this.supabase
+      .getClient()
       .from('user_roles')
       .select('id')
       .eq('role_id', id)
@@ -156,7 +162,8 @@ export class RolesService {
       );
     }
 
-    const { error } = await this.supabase.getClient()
+    const { error } = await this.supabase
+      .getClient()
       .from('roles')
       .delete()
       .eq('id', id)
@@ -183,7 +190,8 @@ export class RolesService {
     await this.findOne(role_id, tenantId);
 
     // Verificar se já existe esta atribuição
-    const query = this.supabase.getClient()
+    const query = this.supabase
+      .getClient()
       .from('user_roles')
       .select('id')
       .eq('user_id', user_id)
@@ -203,7 +211,8 @@ export class RolesService {
     }
 
     // Criar atribuição
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('user_roles')
       .insert({
         user_id,
@@ -243,7 +252,8 @@ export class RolesService {
     roleId: string,
     schoolId?: string,
   ) {
-    const query = this.supabase.getClient()
+    const query = this.supabase
+      .getClient()
       .from('user_roles')
       .delete()
       .eq('user_id', userId)
@@ -289,7 +299,8 @@ export class RolesService {
     });
 
     // 1. Primeiro buscar o UUID do usuário pelo auth0_id (armazena UUID do Supabase)
-    const { data: userData, error: userError } = await this.supabase.getClient()
+    const { data: userData, error: userError } = await this.supabase
+      .getClient()
       .from('users')
       .select('id')
       .eq('auth0_id', supabaseId)
@@ -307,7 +318,8 @@ export class RolesService {
     const userId = userData.id;
 
     // 2. Buscar roles do usuário usando o UUID
-    const query = this.supabase.getClient()
+    const query = this.supabase
+      .getClient()
       .from('user_roles')
       .select('*, roles(*)')
       .eq('user_id', userId)

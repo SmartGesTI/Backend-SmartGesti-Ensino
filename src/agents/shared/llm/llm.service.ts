@@ -29,7 +29,10 @@ export class LLMService {
     try {
       return await this.openaiService.chat(request);
     } catch (error: any) {
-      this.logger.error(`Erro no LLMService.chat: ${error.message}`, 'LLMService');
+      this.logger.error(
+        `Erro no LLMService.chat: ${error.message}`,
+        'LLMService',
+      );
       throw error;
     }
   }
@@ -41,7 +44,10 @@ export class LLMService {
     try {
       return this.openaiService.streamChat(request);
     } catch (error: any) {
-      this.logger.error(`Erro no LLMService.streamChat: ${error.message}`, 'LLMService');
+      this.logger.error(
+        `Erro no LLMService.streamChat: ${error.message}`,
+        'LLMService',
+      );
       return new Observable((observer) => {
         observer.error(error);
       });
@@ -56,7 +62,10 @@ export class LLMService {
     const modelInfo = this.modelConfig.getModelInfo(model);
 
     if (!modelInfo?.supportsFunctions) {
-      this.logger.warn(`Modelo ${model} não suporta function calling`, 'LLMService');
+      this.logger.warn(
+        `Modelo ${model} não suporta function calling`,
+        'LLMService',
+      );
       return request;
     }
 
@@ -78,7 +87,10 @@ export class LLMService {
     const modelInfo = this.modelConfig.getModelInfo(model);
 
     if (!modelInfo?.supportsStructuredOutputs) {
-      this.logger.warn(`Modelo ${model} não suporta structured outputs`, 'LLMService');
+      this.logger.warn(
+        `Modelo ${model} não suporta structured outputs`,
+        'LLMService',
+      );
       return request;
     }
 
@@ -128,7 +140,11 @@ export class LLMService {
   /**
    * Cria mensagem de tool result
    */
-  createToolMessage(toolCallId: string, content: string, name?: string): LLMMessage {
+  createToolMessage(
+    toolCallId: string,
+    content: string,
+    name?: string,
+  ): LLMMessage {
     return {
       role: 'tool',
       content,

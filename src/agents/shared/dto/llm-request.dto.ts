@@ -1,4 +1,14 @@
-import { IsString, IsOptional, IsArray, IsObject, IsBoolean, IsNumber, Min, Max, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsArray,
+  IsObject,
+  IsBoolean,
+  IsNumber,
+  Min,
+  Max,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class LLMRequestDto {

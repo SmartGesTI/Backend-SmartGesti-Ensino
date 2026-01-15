@@ -17,7 +17,9 @@ export interface SupportAgentCallOptions {
   userName?: string;
 }
 
-export type SupportAgentUIMessage = InferAgentUIMessage<typeof SupportAgent.prototype.agent>;
+export type SupportAgentUIMessage = InferAgentUIMessage<
+  typeof SupportAgent.prototype.agent
+>;
 
 /**
  * Support Agent using ToolLoopAgent (AI SDK 6)
@@ -38,11 +40,14 @@ export class SupportAgent {
   ) {
     // Get default model
     const provider = this.aiConfig.getDefaultProvider();
-    const modelName = this.modelConfig.getProvider(provider)?.defaultModel || 'gpt-5-mini';
+    const modelName =
+      this.modelConfig.getProvider(provider)?.defaultModel || 'gpt-5-mini';
     const model = this.providerFactory.getModel(provider, modelName);
 
     if (!model) {
-      throw new Error(`Model ${modelName} not available for provider ${provider}`);
+      throw new Error(
+        `Model ${modelName} not available for provider ${provider}`,
+      );
     }
 
     // Create agent with call options schema for type-safe runtime configuration
@@ -65,8 +70,14 @@ Quando usar cada tool:
         tenantId: z.string().describe('ID do tenant (obrigatório)'),
         userId: z.string().describe('ID do usuário (obrigatório)'),
         schoolId: z.string().optional().describe('ID da escola (opcional)'),
-        conversationId: z.string().optional().describe('ID da conversa para contexto'),
-        userRole: z.string().optional().describe('Papel do usuário (ex: admin, teacher, student)'),
+        conversationId: z
+          .string()
+          .optional()
+          .describe('ID da conversa para contexto'),
+        userRole: z
+          .string()
+          .optional()
+          .describe('Papel do usuário (ex: admin, teacher, student)'),
         userName: z.string().optional().describe('Nome do usuário'),
       }),
       prepareCall: ({ options, ...settings }) => {

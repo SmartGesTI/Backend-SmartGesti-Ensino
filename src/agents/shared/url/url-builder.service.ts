@@ -4,7 +4,7 @@ import { LoggerService } from '../../../common/logger/logger.service';
 
 /**
  * UrlBuilderService
- * 
+ *
  * Responsável por construir URLs dinamicamente baseado no contexto da requisição.
  * Suporta ambientes de desenvolvimento e produção, com subdomínios de tenant.
  */
@@ -18,8 +18,11 @@ export class UrlBuilderService {
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
   ) {
-    this.isProduction = this.configService.get<string>('NODE_ENV') === 'production';
-    this.productionDomain = this.configService.get<string>('PRODUCTION_DOMAIN') || 'smartgesti.com.br';
+    this.isProduction =
+      this.configService.get<string>('NODE_ENV') === 'production';
+    this.productionDomain =
+      this.configService.get<string>('PRODUCTION_DOMAIN') ||
+      'smartgesti.com.br';
     this.devPort = this.configService.get<string>('FRONTEND_PORT') || '5173';
 
     this.logger.log(
@@ -30,7 +33,7 @@ export class UrlBuilderService {
 
   /**
    * Constrói a URL base (domínio) baseado no contexto
-   * 
+   *
    * @param tenantSubdomain - Subdomínio do tenant (ex: "magistral")
    * @param requestOrigin - Origin da requisição HTTP (opcional, para inferir automaticamente)
    * @returns URL base como string (ex: "http://magistral.localhost:5173")
@@ -41,7 +44,10 @@ export class UrlBuilderService {
       try {
         const url = new URL(requestOrigin);
         // Se o origin já tem o padrão correto, retornar
-        if (url.hostname.includes('.localhost') || url.hostname.endsWith(this.productionDomain)) {
+        if (
+          url.hostname.includes('.localhost') ||
+          url.hostname.endsWith(this.productionDomain)
+        ) {
           return requestOrigin.replace(/\/$/, ''); // Remove trailing slash
         }
       } catch {
@@ -63,7 +69,7 @@ export class UrlBuilderService {
 
   /**
    * Constrói uma URL completa para uma rota específica
-   * 
+   *
    * @param route - Rota relativa (ex: "/escola/unidade-i/ia/assistente")
    * @param options - Opções de construção
    * @returns URL completa
@@ -76,8 +82,11 @@ export class UrlBuilderService {
       requestOrigin?: string;
     } = {},
   ): string {
-    const baseUrl = this.buildBaseUrl(options.tenantSubdomain, options.requestOrigin);
-    
+    const baseUrl = this.buildBaseUrl(
+      options.tenantSubdomain,
+      options.requestOrigin,
+    );
+
     // Substituir :slug na rota se schoolSlug fornecido
     let finalRoute = route;
     if (options.schoolSlug) {
@@ -94,7 +103,7 @@ export class UrlBuilderService {
 
   /**
    * Substitui placeholders em uma rota
-   * 
+   *
    * @param routePattern - Padrão da rota com placeholders (ex: "/escola/:slug/dashboard")
    * @param params - Parâmetros para substituição
    * @returns Rota com placeholders substituídos
@@ -104,7 +113,7 @@ export class UrlBuilderService {
     params: Record<string, string>,
   ): string {
     let route = routePattern;
-    
+
     for (const [key, value] of Object.entries(params)) {
       route = route.replace(`:${key}`, value);
     }
@@ -124,7 +133,7 @@ export class UrlBuilderService {
     try {
       const url = new URL(origin);
       const hostParts = url.hostname.split('.');
-      
+
       // Extrair subdomínio se existir
       let subdomain: string | undefined;
       if (hostParts.length > 1) {

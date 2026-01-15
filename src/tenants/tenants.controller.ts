@@ -23,18 +23,25 @@ export class TenantsController {
 
   // Endpoint público para buscar por subdomain (usado no login)
   @Get(':subdomain')
-  async getTenantBySubdomain(@Param('subdomain') subdomain: string): Promise<Tenant> {
+  async getTenantBySubdomain(
+    @Param('subdomain') subdomain: string,
+  ): Promise<Tenant> {
     try {
       const tenant = await this.tenantsService.getTenantBySubdomain(subdomain);
 
       if (!tenant) {
-        throw new NotFoundException(`Tenant with subdomain '${subdomain}' not found`);
+        throw new NotFoundException(
+          `Tenant with subdomain '${subdomain}' not found`,
+        );
       }
 
       return tenant;
     } catch (error: any) {
       // Se for erro de conexão, retornar erro mais amigável
-      if (error.message?.includes('connection failed') || error.message?.includes('fetch failed')) {
+      if (
+        error.message?.includes('connection failed') ||
+        error.message?.includes('fetch failed')
+      ) {
         throw new InternalServerErrorException(
           'Database connection failed. Please check your Supabase configuration and ensure the migration has been executed.',
         );
@@ -50,7 +57,10 @@ export class TenantsController {
     try {
       return await this.tenantsService.getAllTenants();
     } catch (error: any) {
-      if (error.message?.includes('connection failed') || error.message?.includes('fetch failed')) {
+      if (
+        error.message?.includes('connection failed') ||
+        error.message?.includes('fetch failed')
+      ) {
         throw new InternalServerErrorException(
           'Database connection failed. Please check your Supabase configuration.',
         );
@@ -72,7 +82,10 @@ export class TenantsController {
 
       return tenant;
     } catch (error: any) {
-      if (error.message?.includes('connection failed') || error.message?.includes('fetch failed')) {
+      if (
+        error.message?.includes('connection failed') ||
+        error.message?.includes('fetch failed')
+      ) {
         throw new InternalServerErrorException(
           'Database connection failed. Please check your Supabase configuration.',
         );
@@ -84,11 +97,16 @@ export class TenantsController {
   // Criar tenant (Service Key)
   @Post()
   @UseGuards(ServiceKeyGuard)
-  async createTenant(@Body() createTenantDto: CreateTenantDto): Promise<Tenant> {
+  async createTenant(
+    @Body() createTenantDto: CreateTenantDto,
+  ): Promise<Tenant> {
     try {
       return await this.tenantsService.createTenant(createTenantDto);
     } catch (error: any) {
-      if (error.message?.includes('connection failed') || error.message?.includes('fetch failed')) {
+      if (
+        error.message?.includes('connection failed') ||
+        error.message?.includes('fetch failed')
+      ) {
         throw new InternalServerErrorException(
           'Database connection failed. Please check your Supabase configuration.',
         );
@@ -107,7 +125,10 @@ export class TenantsController {
     try {
       return await this.tenantsService.updateTenant(id, updateTenantDto);
     } catch (error: any) {
-      if (error.message?.includes('connection failed') || error.message?.includes('fetch failed')) {
+      if (
+        error.message?.includes('connection failed') ||
+        error.message?.includes('fetch failed')
+      ) {
         throw new InternalServerErrorException(
           'Database connection failed. Please check your Supabase configuration.',
         );
@@ -124,7 +145,10 @@ export class TenantsController {
       await this.tenantsService.deleteTenant(id);
       return { message: `Tenant with id '${id}' deleted successfully` };
     } catch (error: any) {
-      if (error.message?.includes('connection failed') || error.message?.includes('fetch failed')) {
+      if (
+        error.message?.includes('connection failed') ||
+        error.message?.includes('fetch failed')
+      ) {
         throw new InternalServerErrorException(
           'Database connection failed. Please check your Supabase configuration.',
         );

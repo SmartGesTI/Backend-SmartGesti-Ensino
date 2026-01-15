@@ -21,7 +21,8 @@ export class SupabaseMemoryService implements IMemoryService {
   async getOrCreateConversation(context: ConversationContext): Promise<string> {
     if (context.conversationId) {
       // Verificar se a conversa já existe
-      const { data: existing, error: checkError } = await this.supabase.getClient()
+      const { data: existing, error: checkError } = await this.supabase
+        .getClient()
         .from('assistant_conversations')
         .select('id')
         .eq('id', context.conversationId)
@@ -42,7 +43,8 @@ export class SupabaseMemoryService implements IMemoryService {
       }
 
       // Se não existe, criar com o ID fornecido
-      const { data: newConversation, error: insertError } = await this.supabase.getClient()
+      const { data: newConversation, error: insertError } = await this.supabase
+        .getClient()
         .from('assistant_conversations')
         .insert({
           id: context.conversationId,
@@ -56,7 +58,10 @@ export class SupabaseMemoryService implements IMemoryService {
         .single();
 
       if (insertError) {
-        this.logger.error(`Error creating conversation with ID: ${insertError.message}`, insertError);
+        this.logger.error(
+          `Error creating conversation with ID: ${insertError.message}`,
+          insertError,
+        );
         throw insertError;
       }
 
@@ -67,7 +72,8 @@ export class SupabaseMemoryService implements IMemoryService {
     }
 
     // Se não há conversationId, buscar conversa recente ou criar nova
-    const { data: existing, error: findError } = await this.supabase.getClient()
+    const { data: existing, error: findError } = await this.supabase
+      .getClient()
       .from('assistant_conversations')
       .select('id')
       .eq('user_id', context.userId)
@@ -77,7 +83,10 @@ export class SupabaseMemoryService implements IMemoryService {
       .maybeSingle();
 
     if (findError) {
-      this.logger.error(`Error finding recent conversation: ${findError.message}`, findError);
+      this.logger.error(
+        `Error finding recent conversation: ${findError.message}`,
+        findError,
+      );
       throw findError;
     }
 
@@ -86,7 +95,8 @@ export class SupabaseMemoryService implements IMemoryService {
     }
 
     // Criar nova conversa
-    const { data: newConversation, error: insertError } = await this.supabase.getClient()
+    const { data: newConversation, error: insertError } = await this.supabase
+      .getClient()
       .from('assistant_conversations')
       .insert({
         user_id: context.userId,
@@ -98,7 +108,10 @@ export class SupabaseMemoryService implements IMemoryService {
       .single();
 
     if (insertError) {
-      this.logger.error(`Error creating conversation: ${insertError.message}`, insertError);
+      this.logger.error(
+        `Error creating conversation: ${insertError.message}`,
+        insertError,
+      );
       throw insertError;
     }
 
@@ -129,7 +142,8 @@ export class SupabaseMemoryService implements IMemoryService {
     const messagesToStore = this.coreMessagesToMessages(limitedMessages);
 
     // Salvar no Supabase
-    const { error } = await this.supabase.getClient()
+    const { error } = await this.supabase
+      .getClient()
       .from('assistant_conversations')
       .update({
         messages: messagesToStore,
@@ -143,7 +157,9 @@ export class SupabaseMemoryService implements IMemoryService {
       throw error;
     }
 
-    this.logger.debug(`Saved ${messages.length} messages to conversation ${conversationId}`);
+    this.logger.debug(
+      `Saved ${messages.length} messages to conversation ${conversationId}`,
+    );
   }
 
   async getMessages(
@@ -152,7 +168,8 @@ export class SupabaseMemoryService implements IMemoryService {
   ): Promise<ModelMessage[]> {
     const conversationId = await this.getOrCreateConversation(context);
 
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('assistant_conversations')
       .select('messages')
       .eq('id', conversationId)
@@ -184,7 +201,8 @@ export class SupabaseMemoryService implements IMemoryService {
   async clearMessages(context: ConversationContext): Promise<void> {
     const conversationId = await this.getOrCreateConversation(context);
 
-    const { error } = await this.supabase.getClient()
+    const { error } = await this.supabase
+      .getClient()
       .from('assistant_conversations')
       .update({
         messages: [],
@@ -201,7 +219,10 @@ export class SupabaseMemoryService implements IMemoryService {
     this.logger.debug(`Cleared messages from conversation ${conversationId}`);
   }
 
-  async addMessage(context: ConversationContext, message: Message): Promise<void> {
+  async addMessage(
+    context: ConversationContext,
+    message: Message,
+  ): Promise<void> {
     await this.saveMessages(context, [message]);
   }
 
@@ -237,7 +258,10 @@ export class SupabaseMemoryService implements IMemoryService {
       const message: Message = {
         id: `msg-${Date.now()}-${index}`,
         role: msg.role,
-        content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+        content:
+          typeof msg.content === 'string'
+            ? msg.content
+            : JSON.stringify(msg.content),
         timestamp: new Date().toISOString(),
       };
 
@@ -306,7 +330,8 @@ export class SupabaseMemoryService implements IMemoryService {
     const conversationId = await this.getOrCreateConversation(context);
 
     // Get existing messages directly from DB (not converted)
-    const { data: existing } = await this.supabase.getClient()
+    const { data: existing } = await this.supabase
+      .getClient()
       .from('assistant_conversations')
       .select('messages')
       .eq('id', conversationId)
@@ -319,7 +344,12 @@ export class SupabaseMemoryService implements IMemoryService {
     const newMessages = messages.map((msg) => ({
       id: msg.id || `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       role: msg.role as MessageRole,
-      content: typeof msg.content === 'string' ? msg.content : (msg.content ? JSON.stringify(msg.content) : ''),
+      content:
+        typeof msg.content === 'string'
+          ? msg.content
+          : msg.content
+            ? JSON.stringify(msg.content)
+            : '',
       parts: msg.parts || [],
       toolCalls: msg.toolCalls || undefined,
       reasoning: msg.reasoning || undefined,
@@ -338,11 +368,13 @@ export class SupabaseMemoryService implements IMemoryService {
     if (existingMessages.length === 0) {
       const firstUserMessage = messages.find((m) => m.role === 'user');
       if (firstUserMessage) {
-        const content = firstUserMessage.content || 
-          (firstUserMessage.parts?.find((p: any) => p?.type === 'text')?.text) || 
+        const content =
+          firstUserMessage.content ||
+          firstUserMessage.parts?.find((p: any) => p?.type === 'text')?.text ||
           '';
         // Truncate to 60 chars for title
-        title = content.length > 60 ? content.substring(0, 57) + '...' : content;
+        title =
+          content.length > 60 ? content.substring(0, 57) + '...' : content;
       }
     }
 
@@ -357,7 +389,8 @@ export class SupabaseMemoryService implements IMemoryService {
       updateData.title = title;
     }
 
-    const { error } = await this.supabase.getClient()
+    const { error } = await this.supabase
+      .getClient()
       .from('assistant_conversations')
       .update(updateData)
       .eq('id', conversationId)
@@ -368,6 +401,8 @@ export class SupabaseMemoryService implements IMemoryService {
       throw error;
     }
 
-    this.logger.debug(`Saved ${messages.length} UIMessages to conversation ${conversationId} (total: ${limitedMessages.length})`);
+    this.logger.debug(
+      `Saved ${messages.length} UIMessages to conversation ${conversationId} (total: ${limitedMessages.length})`,
+    );
   }
 }

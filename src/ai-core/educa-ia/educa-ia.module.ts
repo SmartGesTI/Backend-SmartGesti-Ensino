@@ -6,7 +6,7 @@ import { AiCoreModule } from '../config/ai-core.module';
 
 /**
  * EducaIA Module
- * 
+ *
  * Imports AiCoreModule which provides:
  * - EducaIAAgent
  * - RAGTool, DatabaseTool, NavigationTool, UserDataTool
@@ -15,10 +15,7 @@ import { AiCoreModule } from '../config/ai-core.module';
 @Module({
   imports: [AiCoreModule],
   controllers: [EducaIAController],
-  providers: [
-    EducaIAService,
-    FeedbackService,
-  ],
+  providers: [EducaIAService, FeedbackService],
   exports: [EducaIAService, FeedbackService],
 })
 export class EducaIAModule {}

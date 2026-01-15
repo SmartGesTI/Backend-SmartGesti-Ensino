@@ -12,7 +12,7 @@ export interface AgentAccess {
 
 /**
  * Interface do agente para verificação de permissões
- * 
+ *
  * Visibilidade simplificada:
  * - public: Todos da escola podem ver e usar
  * - public_collaborative: Público + qualquer um edita, só dono apaga
@@ -36,7 +36,7 @@ export class AgentsPermissionsService {
 
   /**
    * Verifica acesso completo ao agente
-   * 
+   *
    * Lógica simplificada de permissões:
    * - Owner da instituição: acesso total a tudo
    * - Dono do agente: acesso total ao seu agente
@@ -67,7 +67,7 @@ export class AgentsPermissionsService {
 
     // 2. Verificar se é dono do agente
     const isOwner = agent.created_by === userId;
-    
+
     // 3. Dono tem acesso total ao seu agente
     if (isOwner) {
       return {
@@ -111,9 +111,13 @@ export class AgentsPermissionsService {
     const hasRbacView =
       this.checkPermission(userPermissions, 'agents', 'read') ||
       this.checkPermission(userPermissions, 'agents', 'view');
-    
-    const hasRbacExecute = this.checkPermission(userPermissions, 'agents', 'execute');
-    
+
+    const hasRbacExecute = this.checkPermission(
+      userPermissions,
+      'agents',
+      'execute',
+    );
+
     const hasRbacEdit =
       this.checkPermission(userPermissions, 'agents', 'update') ||
       this.checkPermission(userPermissions, 'agents', 'manage');
@@ -170,22 +174,24 @@ export class AgentsPermissionsService {
    * Normaliza visibility para o novo sistema
    * Compatibilidade com valores antigos: public_school, public_editable, restricted
    */
-  private normalizeVisibility(agent: Agent): 'public' | 'public_collaborative' | 'private' {
+  private normalizeVisibility(
+    agent: Agent,
+  ): 'public' | 'public_collaborative' | 'private' {
     // Se já tem o novo formato
     if (agent.visibility === 'public_collaborative') {
       return 'public_collaborative';
     }
-    
+
     // Compatibilidade com type antigo
     if (agent.type === 'public_editable') {
       return 'public_collaborative';
     }
-    
+
     // public_school e public -> public
     if (agent.visibility === 'public' || agent.type === 'public_school') {
       return 'public';
     }
-    
+
     // Tudo mais é privado
     return 'private';
   }
@@ -273,7 +279,7 @@ export class AgentsPermissionsService {
     if (isOwnerOfTenant) {
       return true;
     }
-    
+
     // Dono do agente pode deletar
     if (agent.created_by === userId) {
       return true;
@@ -293,7 +299,11 @@ export class AgentsPermissionsService {
     agentId: string,
     userId: string,
     roleIds: string[],
-  ): Promise<{ canView?: boolean; canExecute?: boolean; canEdit?: boolean } | null> {
+  ): Promise<{
+    canView?: boolean;
+    canExecute?: boolean;
+    canEdit?: boolean;
+  } | null> {
     // Buscar permissão por usuário
     const { data: userPerm } = await this.supabase
       .getClient()
@@ -344,27 +354,35 @@ export class AgentsPermissionsService {
     agentIds: string[],
     userId: string,
     roleIds: string[],
-  ): Promise<Record<string, {
-    isBlocked: boolean;
-    blockView: boolean;
-    blockExecute: boolean;
-    blockEdit: boolean;
-    reason?: string;
-  }>> {
+  ): Promise<
+    Record<
+      string,
+      {
+        isBlocked: boolean;
+        blockView: boolean;
+        blockExecute: boolean;
+        blockEdit: boolean;
+        reason?: string;
+      }
+    >
+  > {
     if (agentIds.length === 0) {
       return {};
     }
 
-    const restrictionsMap: Record<string, {
-      isBlocked: boolean;
-      blockView: boolean;
-      blockExecute: boolean;
-      blockEdit: boolean;
-      reason?: string;
-    }> = {};
+    const restrictionsMap: Record<
+      string,
+      {
+        isBlocked: boolean;
+        blockView: boolean;
+        blockExecute: boolean;
+        blockEdit: boolean;
+        reason?: string;
+      }
+    > = {};
 
     // Inicializar todos como não bloqueados
-    agentIds.forEach(id => {
+    agentIds.forEach((id) => {
       restrictionsMap[id] = {
         isBlocked: false,
         blockView: false,
@@ -399,7 +417,7 @@ export class AgentsPermissionsService {
     // Buscar bloqueios por role (batch) - apenas para agentes que não têm bloqueio por usuário
     if (roleIds.length > 0) {
       const agentsWithoutUserRestriction = agentIds.filter(
-        id => !restrictionsMap[id].isBlocked
+        (id) => !restrictionsMap[id].isBlocked,
       );
 
       if (agentsWithoutUserRestriction.length > 0) {
@@ -453,7 +471,7 @@ export class AgentsPermissionsService {
   ): Promise<AgentAccess> {
     // 1. Verificar se é dono
     const isOwner = agent.created_by === userId;
-    
+
     // 2. public_school nunca editável (nem pelo dono)
     if (agent.type === 'public_school') {
       if (isOwner) {

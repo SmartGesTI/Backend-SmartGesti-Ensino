@@ -1,4 +1,8 @@
-import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -42,7 +46,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       // Se for ES256 (ECC), validar via Supabase Client
       if (header.alg === 'ES256') {
         const supabase = this.supabaseService.getClient();
-        const { data: { user }, error } = await supabase.auth.getUser(token);
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser(token);
 
         if (error || !user) {
           throw new UnauthorizedException('Invalid ES256 token');
@@ -60,18 +67,27 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
         // Verificar se email está confirmado
         // Para usuários OAuth (Google, etc), considerar email como verificado
-        const hasEmailConfirmed = payload.email_confirmed_at !== null && payload.email_confirmed_at !== undefined;
-        const isOAuthUser = payload.app_metadata?.provider !== 'email' || 
-                           payload.user_metadata?.provider === 'google' ||
-                           payload.iss?.includes('accounts.google.com');
+        const hasEmailConfirmed =
+          payload.email_confirmed_at !== null &&
+          payload.email_confirmed_at !== undefined;
+        const isOAuthUser =
+          payload.app_metadata?.provider !== 'email' ||
+          payload.user_metadata?.provider === 'google' ||
+          payload.iss?.includes('accounts.google.com');
         const emailVerified = hasEmailConfirmed || isOAuthUser;
 
         // Adicionar usuário ao request
         request.user = {
           sub: payload.sub,
           email: payload.email || '',
-          name: payload.user_metadata?.full_name || payload.user_metadata?.name || '',
-          picture: payload.user_metadata?.avatar_url || payload.user_metadata?.picture || '',
+          name:
+            payload.user_metadata?.full_name ||
+            payload.user_metadata?.name ||
+            '',
+          picture:
+            payload.user_metadata?.avatar_url ||
+            payload.user_metadata?.picture ||
+            '',
           email_verified: emailVerified,
         };
 

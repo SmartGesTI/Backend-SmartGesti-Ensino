@@ -1,4 +1,8 @@
-export type WorkflowPattern = 'sequential' | 'parallel' | 'orchestrator' | 'evaluator-optimizer';
+export type WorkflowPattern =
+  | 'sequential'
+  | 'parallel'
+  | 'orchestrator'
+  | 'evaluator-optimizer';
 
 export interface WorkflowStep {
   id: string;

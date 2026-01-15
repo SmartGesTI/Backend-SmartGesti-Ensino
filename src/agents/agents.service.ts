@@ -8,7 +8,10 @@ import {
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoggerService } from '../common/logger/logger.service';
-import { PermissionsService, PermissionContextResult } from '../permissions/permissions.service';
+import {
+  PermissionsService,
+  PermissionContextResult,
+} from '../permissions/permissions.service';
 import { RolesService } from '../roles/roles.service';
 import { AgentsPermissionsService } from './agents.permissions.service';
 import { WorkflowExecutorService } from './workflow-executor.service';
@@ -88,11 +91,21 @@ export class AgentsService {
       userId = permContext.userId;
       userPermissions = permContext.permissions;
       isOwner = permContext.isOwner;
-      this.logger.log('Usando contexto de permissões pré-calculado', 'AgentsService');
+      this.logger.log(
+        'Usando contexto de permissões pré-calculado',
+        'AgentsService',
+      );
     } else {
       // Fallback: calcular (isso não deveria acontecer se o guard está funcionando)
-      this.logger.log('Calculando contexto de permissões (fallback)', 'AgentsService');
-      const context = await this.permissionsService.getPermissionContext(supabaseId, tenantId, schoolId);
+      this.logger.log(
+        'Calculando contexto de permissões (fallback)',
+        'AgentsService',
+      );
+      const context = await this.permissionsService.getPermissionContext(
+        supabaseId,
+        tenantId,
+        schoolId,
+      );
       if (!context) {
         throw new BadRequestException('Usuário não encontrado');
       }
@@ -161,13 +174,20 @@ export class AgentsService {
     });
 
     if (error) {
-      this.logger.error('Erro ao buscar agentes', error.message, 'AgentsService');
+      this.logger.error(
+        'Erro ao buscar agentes',
+        error.message,
+        'AgentsService',
+      );
       throw new BadRequestException('Erro ao buscar agentes');
     }
 
     // Se owner, retornar todos os agentes diretamente
     if (isOwner) {
-      this.logger.log('Usuário é owner, retornando todos os agentes sem verificação individual', 'AgentsService');
+      this.logger.log(
+        'Usuário é owner, retornando todos os agentes sem verificação individual',
+        'AgentsService',
+      );
       return agents || [];
     }
 
@@ -184,24 +204,26 @@ export class AgentsService {
 
     // Buscar todas as restrições de uma vez (batch) para otimizar
     const agentIds = (agents || []).map((a: any) => a.id);
-    const allRestrictions = await this.agentsPermissionsService.getAgentRestrictionsBatch(
-      agentIds,
-      userId,
-      userRolesMapped.map((r) => r.id),
-    );
+    const allRestrictions =
+      await this.agentsPermissionsService.getAgentRestrictionsBatch(
+        agentIds,
+        userId,
+        userRolesMapped.map((r) => r.id),
+      );
 
     // Filtrar por permissões específicas
     const filteredAgents: any[] = [];
     for (const agent of agents || []) {
-      const access = await this.agentsPermissionsService.checkAgentAccessOptimized(
-        agent,
-        userId,
-        userPermissions,
-        userRolesMapped,
-        tenantId,
-        schoolId,
-        allRestrictions[agent.id], // Passar restrições já carregadas
-      );
+      const access =
+        await this.agentsPermissionsService.checkAgentAccessOptimized(
+          agent,
+          userId,
+          userPermissions,
+          userRolesMapped,
+          tenantId,
+          schoolId,
+          allRestrictions[agent.id], // Passar restrições já carregadas
+        );
 
       if (access.canView) {
         filteredAgents.push(agent);
@@ -270,11 +292,7 @@ export class AgentsService {
   /**
    * Cria um novo agente
    */
-  async create(
-    dto: CreateAgentDto,
-    supabaseId: string,
-    tenantId: string,
-  ) {
+  async create(dto: CreateAgentDto, supabaseId: string, tenantId: string) {
     const userId = await this.getUserUuidFromSupabase(supabaseId);
     if (!userId) {
       throw new BadRequestException('Usuário não encontrado');
@@ -286,16 +304,10 @@ export class AgentsService {
       tenantId,
     );
 
-    const canCreate = this.checkPermission(
-      userPermissions,
-      'agents',
-      'create',
-    );
+    const canCreate = this.checkPermission(userPermissions, 'agents', 'create');
 
     if (!canCreate) {
-      throw new ForbiddenException(
-        'Sem permissão para criar agentes',
-      );
+      throw new ForbiddenException('Sem permissão para criar agentes');
     }
 
     const { data: agent, error } = await this.supabase
@@ -323,7 +335,8 @@ export class AgentsService {
         settings: dto.settings || {},
         is_active: dto.is_active !== undefined ? dto.is_active : true,
         is_template: dto.is_template || false,
-        use_auto_layout: dto.use_auto_layout !== undefined ? dto.use_auto_layout : true,
+        use_auto_layout:
+          dto.use_auto_layout !== undefined ? dto.use_auto_layout : true,
         best_uses: dto.best_uses || [],
         how_it_helps: dto.how_it_helps || '',
         usage_count: 0,
@@ -385,9 +398,7 @@ export class AgentsService {
     );
 
     if (!canEdit) {
-      throw new ForbiddenException(
-        'Sem permissão para editar este agente',
-      );
+      throw new ForbiddenException('Sem permissão para editar este agente');
     }
 
     const updateData: any = {
@@ -413,9 +424,11 @@ export class AgentsService {
     if (dto.settings !== undefined) updateData.settings = dto.settings;
     if (dto.is_active !== undefined) updateData.is_active = dto.is_active;
     if (dto.is_template !== undefined) updateData.is_template = dto.is_template;
-    if (dto.use_auto_layout !== undefined) updateData.use_auto_layout = dto.use_auto_layout;
+    if (dto.use_auto_layout !== undefined)
+      updateData.use_auto_layout = dto.use_auto_layout;
     if (dto.best_uses !== undefined) updateData.best_uses = dto.best_uses;
-    if (dto.how_it_helps !== undefined) updateData.how_it_helps = dto.how_it_helps;
+    if (dto.how_it_helps !== undefined)
+      updateData.how_it_helps = dto.how_it_helps;
     if (dto.status !== undefined) updateData.status = dto.status;
 
     const { data: updatedAgent, error } = await this.supabase
@@ -458,7 +471,10 @@ export class AgentsService {
       userPermissions = permContext.permissions;
     } else {
       // Fallback: calcular
-      const context = await this.permissionsService.getPermissionContext(supabaseId, tenantId);
+      const context = await this.permissionsService.getPermissionContext(
+        supabaseId,
+        tenantId,
+      );
       if (!context) {
         throw new BadRequestException('Usuário não encontrado');
       }
@@ -488,9 +504,7 @@ export class AgentsService {
     );
 
     if (!canDelete) {
-      throw new ForbiddenException(
-        'Sem permissão para deletar este agente',
-      );
+      throw new ForbiddenException('Sem permissão para deletar este agente');
     }
 
     const { error } = await this.supabase
@@ -501,7 +515,11 @@ export class AgentsService {
       .eq('tenant_id', tenantId);
 
     if (error) {
-      this.logger.error('Erro ao deletar agente', error.message, 'AgentsService');
+      this.logger.error(
+        'Erro ao deletar agente',
+        error.message,
+        'AgentsService',
+      );
       throw new BadRequestException('Erro ao deletar agente');
     }
 
@@ -549,9 +567,7 @@ export class AgentsService {
     );
 
     if (!canExecute) {
-      throw new ForbiddenException(
-        'Sem permissão para executar este agente',
-      );
+      throw new ForbiddenException('Sem permissão para executar este agente');
     }
 
     // Incrementar contador de uso
@@ -561,7 +577,7 @@ export class AgentsService {
         .from('agents')
         .update({ usage_count: (agent.usage_count || 0) + 1 })
         .eq('id', id);
-      
+
       if (error) {
         this.logger.warn('Erro ao incrementar usage_count', 'AgentsService', {
           error: error.message,
@@ -615,7 +631,8 @@ export class AgentsService {
 
     const user = await this.usersService.getUserByAuth0Id(supabaseId);
 
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const tenant = uuidRegex.test(tenantId)
       ? await this.tenantsService.getTenantById(tenantId)
       : await this.tenantsService.getTenantBySubdomain(tenantId);
@@ -690,9 +707,7 @@ export class AgentsService {
 
     // Validar que tem user_id OU role_id (não ambos)
     if (!dto.user_id && !dto.role_id) {
-      throw new BadRequestException(
-        'Deve fornecer user_id ou role_id',
-      );
+      throw new BadRequestException('Deve fornecer user_id ou role_id');
     }
 
     if (dto.user_id && dto.role_id) {
@@ -768,9 +783,7 @@ export class AgentsService {
 
     // Validar que tem user_id OU role_id
     if (!dto.user_id && !dto.role_id) {
-      throw new BadRequestException(
-        'Deve fornecer user_id ou role_id',
-      );
+      throw new BadRequestException('Deve fornecer user_id ou role_id');
     }
 
     if (dto.user_id && dto.role_id) {

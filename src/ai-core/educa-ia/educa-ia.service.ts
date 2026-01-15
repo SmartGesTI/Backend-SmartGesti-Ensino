@@ -7,7 +7,12 @@ import {
   stepCountIs,
   type UIMessage,
 } from 'ai';
-import { EducaIAAgent, detectComplexity, supportsReasoning, type ResponseMode } from '../agents/educa-ia.agent';
+import {
+  EducaIAAgent,
+  detectComplexity,
+  supportsReasoning,
+  type ResponseMode,
+} from '../agents/educa-ia.agent';
 import { ModelProviderFactory } from '../providers/model-provider.factory';
 import { ModelProviderConfigService } from '../config/model-provider.config';
 import { AiCoreConfigService } from '../config/ai-core.config';
@@ -66,7 +71,7 @@ export class EducaIAService {
   ): Promise<void> {
     // Get user ID for memory operations
     const userId = await this.getUserId(options.supabaseId);
-    
+
     // Use user data from JWT context (no database query needed)
     const userData = {
       id: userId,
@@ -74,11 +79,11 @@ export class EducaIAService {
       email: options.userEmail,
       role: options.userRole,
     };
-    
+
     // Get school data (use slug from frontend if available, fallback to DB query)
     let schoolSlug = options.schoolSlug;
     let schoolName: string | undefined;
-    
+
     if (options.schoolId && !schoolSlug) {
       // Only query DB if we need the slug and don't have it
       const schoolData = await this.getSchoolData(options.schoolId);
@@ -97,7 +102,9 @@ export class EducaIAService {
 
     const model = this.providerFactory.getModel(provider, modelName);
     if (!model) {
-      throw new Error(`Model ${modelName} not available for provider ${provider}`);
+      throw new Error(
+        `Model ${modelName} not available for provider ${provider}`,
+      );
     }
 
     // Ensure conversation exists BEFORE streaming (prevents race condition)
@@ -141,7 +148,9 @@ export class EducaIAService {
           conversationMessages = [...historyUIMessages, ...messages];
         }
       } catch (error: any) {
-        this.logger.warn(`Could not load conversation history: ${error.message}`);
+        this.logger.warn(
+          `Could not load conversation history: ${error.message}`,
+        );
       }
     }
 
@@ -151,7 +160,8 @@ export class EducaIAService {
       ? this.getTextFromUIMessage(lastUserMessage)
       : '';
     const shouldSuggestDetailed =
-      options.responseMode === 'fast' && detectComplexity(userText) === 'complex';
+      options.responseMode === 'fast' &&
+      detectComplexity(userText) === 'complex';
 
     // Convert messages for model
     const modelMessages = await convertToModelMessages(conversationMessages);
@@ -196,7 +206,8 @@ export class EducaIAService {
           if (!streamOptions.headers) {
             streamOptions.headers = {};
           }
-          streamOptions.headers['anthropic-beta'] = 'interleaved-thinking-2025-05-14';
+          streamOptions.headers['anthropic-beta'] =
+            'interleaved-thinking-2025-05-14';
         }
       } else if (provider === 'openai' && modelName.includes('gpt-5')) {
         if (!streamOptions.providerOptions.openai) {
@@ -217,9 +228,14 @@ export class EducaIAService {
     streamOptions.system = systemPrompt;
 
     // Create tools from agent (pass schoolSlug and requestOrigin for navigation URLs)
-    const tools = this.createTools(options, userId, schoolSlug, options.requestOrigin);
+    const tools = this.createTools(
+      options,
+      userId,
+      schoolSlug,
+      options.requestOrigin,
+    );
     const toolNames = Object.keys(tools);
-    
+
     if (toolNames.length > 0) {
       streamOptions.tools = tools;
       // Allow multiple tool calls for complex questions
@@ -243,14 +259,13 @@ export class EducaIAService {
       });
 
       // Save messages to memory in background after stream completes
-      this.saveMessagesAfterStream(
-        result,
-        options,
-        userId,
-        userText,
-      ).catch((err) => {
-        this.logger.error(`Error saving messages after stream: ${err.message}`);
-      });
+      this.saveMessagesAfterStream(result, options, userId, userText).catch(
+        (err) => {
+          this.logger.error(
+            `Error saving messages after stream: ${err.message}`,
+          );
+        },
+      );
     } catch (error: any) {
       this.logger.error(`Error streaming: ${error.message}`, error.stack);
       throw error;
@@ -318,14 +333,17 @@ export class EducaIAService {
 
     // If conversation doesn't exist yet (race condition), return empty array
     if (!data) {
-      this.logger.debug(`Conversation ${conversationId} not found yet, returning empty`);
+      this.logger.debug(
+        `Conversation ${conversationId} not found yet, returning empty`,
+      );
       return [];
     }
 
     // Return messages in UIMessage format with parts
     return (data?.messages || []).map((msg: any) => {
       const uiMessage: any = {
-        id: msg.id || `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        id:
+          msg.id || `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         role: msg.role,
         createdAt: msg.timestamp ? new Date(msg.timestamp) : new Date(),
       };
@@ -340,19 +358,29 @@ export class EducaIAService {
         parts = msg.parts.map((p: any) => ({
           ...p,
           // Ensure state is set for tool parts
-          state: p.state || (p.output !== undefined ? 'output-available' : 'completed'),
+          state:
+            p.state ||
+            (p.output !== undefined ? 'output-available' : 'completed'),
         }));
       } else if (msg.content) {
         // Fallback: create text part from content
         parts.push({
           type: 'text',
-          text: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+          text:
+            typeof msg.content === 'string'
+              ? msg.content
+              : JSON.stringify(msg.content),
         });
       }
 
       // Only add toolCalls if parts array is empty AND toolCalls exist
       // This is a legacy fallback for old messages without parts
-      if (parts.length === 0 && msg.toolCalls && Array.isArray(msg.toolCalls) && msg.toolCalls.length > 0) {
+      if (
+        parts.length === 0 &&
+        msg.toolCalls &&
+        Array.isArray(msg.toolCalls) &&
+        msg.toolCalls.length > 0
+      ) {
         for (const tc of msg.toolCalls) {
           parts.push({
             type: `tool-${tc.toolName}`,
@@ -367,7 +395,10 @@ export class EducaIAService {
         if (msg.content) {
           parts.push({
             type: 'text',
-            text: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+            text:
+              typeof msg.content === 'string'
+                ? msg.content
+                : JSON.stringify(msg.content),
           });
         }
       }
@@ -568,7 +599,7 @@ export class EducaIAService {
    * Create tools for the agent with proper context
    */
   private createTools(
-    options: EducaIAStreamOptions, 
+    options: EducaIAStreamOptions,
     userId: string,
     schoolSlug?: string,
     requestOrigin?: string,
@@ -585,17 +616,17 @@ export class EducaIAService {
     return {
       // RAG Tool - busca na knowledge base (documentação)
       retrieveKnowledge: this.ragTool.createTool(toolContext),
-      
+
       // Agents Tools - lista e detalha agentes (NÃO requer aprovação)
       listAgents: this.agentsTool.createListTool(toolContext),
       getAgentDetails: this.agentsTool.createDetailsTool(toolContext),
-      
+
       // Navigation Tool - sugere páginas do sistema
       navigateToPage: this.navigationTool.createTool(toolContext),
-      
+
       // User Data Tool - busca dados do usuário
       getUserData: this.userDataTool.createTool(toolContext),
-      
+
       // Database Tool - consulta dados genéricos (requer aprovação)
       queryDatabase: this.databaseTool.createTool(toolContext),
     };
@@ -687,7 +718,7 @@ export class EducaIAService {
           const output = toolResultsMap.get(toolCallId);
           // Access args with type cast (may be 'args' or 'input' depending on tool type)
           const toolArgs = (tc as any).args || (tc as any).input || {};
-          
+
           assistantParts.push({
             type: `tool-${tc.toolName}`,
             toolCallId,
@@ -707,8 +738,10 @@ export class EducaIAService {
       if (toolResultsResolved && toolResultsResolved.length > 0) {
         for (const tr of toolResultsResolved) {
           const toolCallId = (tr as any).toolCallId;
-          const existingPart = assistantParts.find((p) => p.toolCallId === toolCallId);
-          
+          const existingPart = assistantParts.find(
+            (p) => p.toolCallId === toolCallId,
+          );
+
           if (!existingPart) {
             assistantParts.push({
               type: 'tool-result',
@@ -742,7 +775,10 @@ export class EducaIAService {
       };
 
       // Save both messages using saveUIMessages for proper parts handling
-      await (this.memoryService as any).saveUIMessages(context, [userMessage, assistantMessage]);
+      await (this.memoryService as any).saveUIMessages(context, [
+        userMessage,
+        assistantMessage,
+      ]);
 
       this.logger.debug(
         `Saved user and assistant messages with ${assistantParts.length} parts to conversation ${options.conversationId}`,

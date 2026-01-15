@@ -1,4 +1,11 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoggerService } from '../common/logger/logger.service';
 import { Tenant } from '../common/types';
@@ -9,8 +16,14 @@ import { OwnersService } from '../owners/owners.service';
 @Injectable()
 export class TenantsService {
   // Cache de tenants para evitar consultas repetidas ao banco
-  private tenantCacheBySubdomain = new Map<string, { tenant: Tenant; expiresAt: number }>();
-  private tenantCacheById = new Map<string, { tenant: Tenant; expiresAt: number }>();
+  private tenantCacheBySubdomain = new Map<
+    string,
+    { tenant: Tenant; expiresAt: number }
+  >();
+  private tenantCacheById = new Map<
+    string,
+    { tenant: Tenant; expiresAt: number }
+  >();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
   constructor(
@@ -43,7 +56,10 @@ export class TenantsService {
           return null;
         }
         // Se a tabela não existe, retornar null em vez de erro
-        if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
+        if (
+          error.message?.includes('relation') ||
+          error.message?.includes('does not exist')
+        ) {
           this.logger.warn(
             `Tenants table does not exist. Please run the migration.`,
             'TenantsService',
@@ -65,7 +81,7 @@ export class TenantsService {
       }
 
       const tenant = data as Tenant;
-      
+
       // Salvar no cache
       this.tenantCacheBySubdomain.set(subdomain, {
         tenant,
@@ -79,7 +95,10 @@ export class TenantsService {
       return tenant;
     } catch (err: any) {
       // Tratar erros de rede/conexão
-      if (err.message?.includes('fetch failed') || err.cause?.code === 'ECONNREFUSED') {
+      if (
+        err.message?.includes('fetch failed') ||
+        err.cause?.code === 'ECONNREFUSED'
+      ) {
         this.logger.error(
           `Supabase connection failed. Check SUPABASE_URL and network connection.`,
           undefined,
@@ -89,7 +108,9 @@ export class TenantsService {
             error: err.message,
           },
         );
-        throw new Error('Database connection failed. Please check your Supabase configuration.');
+        throw new Error(
+          'Database connection failed. Please check your Supabase configuration.',
+        );
       }
       throw err;
     }
@@ -125,7 +146,7 @@ export class TenantsService {
     }
 
     const tenant = data as Tenant;
-    
+
     // Salvar no cache
     this.tenantCacheById.set(tenantId, {
       tenant,
@@ -183,7 +204,10 @@ export class TenantsService {
     }
 
     // Validar formato de Estado se fornecido
-    if (createTenantDto.endereco_estado && createTenantDto.endereco_estado.length !== 2) {
+    if (
+      createTenantDto.endereco_estado &&
+      createTenantDto.endereco_estado.length !== 2
+    ) {
       throw new BadRequestException('Estado (UF) must have 2 characters');
     }
 
@@ -201,12 +225,18 @@ export class TenantsService {
       // Verificar se é erro de duplicação
       if (error.code === '23505') {
         if (error.message.includes('subdomain')) {
-          throw new ConflictException(`Tenant with subdomain '${createTenantDto.subdomain}' already exists`);
+          throw new ConflictException(
+            `Tenant with subdomain '${createTenantDto.subdomain}' already exists`,
+          );
         }
         if (error.message.includes('cnpj')) {
-          throw new ConflictException(`Tenant with CNPJ '${createTenantDto.cnpj}' already exists`);
+          throw new ConflictException(
+            `Tenant with CNPJ '${createTenantDto.cnpj}' already exists`,
+          );
         }
-        throw new ConflictException('Tenant with this information already exists');
+        throw new ConflictException(
+          'Tenant with this information already exists',
+        );
       }
 
       this.logger.error(
@@ -243,11 +273,15 @@ export class TenantsService {
             ownershipLevel,
           );
 
-          this.logger.log('Owner added to tenant during creation', 'TenantsService', {
-            tenantId: tenant.id,
-            ownerEmail,
-            ownerId: ownerData?.id,
-          });
+          this.logger.log(
+            'Owner added to tenant during creation',
+            'TenantsService',
+            {
+              tenantId: tenant.id,
+              ownerEmail,
+              ownerId: ownerData?.id,
+            },
+          );
         }
       } catch (error: any) {
         // Log erro mas não falhar a criação do tenant
@@ -265,10 +299,13 @@ export class TenantsService {
     }
 
     // Retornar tenant com owner se foi adicionado
-    return ownerData ? { ...tenant, owner: ownerData } as any : tenant;
+    return ownerData ? ({ ...tenant, owner: ownerData } as any) : tenant;
   }
 
-  async updateTenant(id: string, updateTenantDto: UpdateTenantDto): Promise<Tenant> {
+  async updateTenant(
+    id: string,
+    updateTenantDto: UpdateTenantDto,
+  ): Promise<Tenant> {
     // Verificar se o tenant existe
     const existingTenant = await this.getTenantById(id);
     if (!existingTenant) {
@@ -294,7 +331,10 @@ export class TenantsService {
     }
 
     // Validar formato de Estado se fornecido
-    if (updateTenantDto.endereco_estado && updateTenantDto.endereco_estado.length !== 2) {
+    if (
+      updateTenantDto.endereco_estado &&
+      updateTenantDto.endereco_estado.length !== 2
+    ) {
       throw new BadRequestException('Estado (UF) must have 2 characters');
     }
 
@@ -312,12 +352,18 @@ export class TenantsService {
       // Verificar se é erro de duplicação
       if (error.code === '23505') {
         if (error.message.includes('subdomain')) {
-          throw new ConflictException(`Tenant with subdomain '${updateTenantDto.subdomain}' already exists`);
+          throw new ConflictException(
+            `Tenant with subdomain '${updateTenantDto.subdomain}' already exists`,
+          );
         }
         if (error.message.includes('cnpj')) {
-          throw new ConflictException(`Tenant with CNPJ '${updateTenantDto.cnpj}' already exists`);
+          throw new ConflictException(
+            `Tenant with CNPJ '${updateTenantDto.cnpj}' already exists`,
+          );
         }
-        throw new ConflictException('Tenant with this information already exists');
+        throw new ConflictException(
+          'Tenant with this information already exists',
+        );
       }
 
       this.logger.error(
@@ -335,7 +381,10 @@ export class TenantsService {
     this.tenantCacheBySubdomain.delete(tenant.subdomain);
     this.tenantCacheById.delete(tenant.id);
     // Também invalidar cache do subdomain antigo se mudou
-    if (updateTenantDto.subdomain && updateTenantDto.subdomain !== existingTenant.subdomain) {
+    if (
+      updateTenantDto.subdomain &&
+      updateTenantDto.subdomain !== existingTenant.subdomain
+    ) {
       this.tenantCacheBySubdomain.delete(existingTenant.subdomain);
     }
 
@@ -354,10 +403,7 @@ export class TenantsService {
       throw new NotFoundException(`Tenant with id '${id}' not found`);
     }
 
-    const { error } = await this.supabase
-      .from('tenants')
-      .delete()
-      .eq('id', id);
+    const { error } = await this.supabase.from('tenants').delete().eq('id', id);
 
     if (error) {
       this.logger.error(

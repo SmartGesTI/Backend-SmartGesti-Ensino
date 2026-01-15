@@ -17,9 +17,13 @@ export class AppController {
   testLogs() {
     // Testar diferentes níveis de log
     this.logger.log('Teste de log INFO', 'AppController', { test: true });
-    this.logger.warn('Teste de log WARN', 'AppController', { warning: 'Atenção' });
+    this.logger.warn('Teste de log WARN', 'AppController', {
+      warning: 'Atenção',
+    });
     this.logger.debug('Teste de log DEBUG', 'AppController', { debug: 'info' });
-    this.logger.verbose('Teste de log VERBOSE', 'AppController', { verbose: 'detalhes' });
+    this.logger.verbose('Teste de log VERBOSE', 'AppController', {
+      verbose: 'detalhes',
+    });
 
     return {
       message: 'Logs de teste enviados! Verifique os arquivos em logs/',
@@ -38,7 +42,8 @@ export class AppController {
         'AppController',
         {
           errorType: 'TestError',
-          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          errorMessage:
+            error instanceof Error ? error.message : 'Unknown error',
         },
       );
       return {

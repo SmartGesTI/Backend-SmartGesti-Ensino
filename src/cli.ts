@@ -3,7 +3,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { IngestionService } from './ai-core/rag/services/ingestion.service';
 import { LoggerService } from './common/logger/logger.service';
-import { EmbeddingService, ChunkService, SearchService } from './ai-core/rag/services';
+import {
+  EmbeddingService,
+  ChunkService,
+  SearchService,
+} from './ai-core/rag/services';
 import { LoggerModule } from './common/logger/logger.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import * as path from 'path';
@@ -24,10 +28,9 @@ async function bootstrap() {
   const app = await NestFactory.create(RagCliModule);
   const ingestionService = app.get(IngestionService);
   const logger = app.get(LoggerService);
-  
+
   // Aguardar um pouco para garantir que o banco de dados está pronto
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 
   const command = process.argv[2];
   const subcommand = process.argv[3];
@@ -80,13 +83,14 @@ async function bootstrap() {
       // Importar SearchService corretamente se necessário
       logger.log('Status do RAG não implementado ainda', 'CLI');
     } else {
-      logger.log(
-        'Comando desconhecido. Use: rag:ingest ou rag:status',
-        'CLI',
-      );
+      logger.log('Comando desconhecido. Use: rag:ingest ou rag:status', 'CLI');
     }
   } catch (error) {
-    logger.error(`Erro ao executar comando: ${error.message}`, error.stack, 'CLI');
+    logger.error(
+      `Erro ao executar comando: ${error.message}`,
+      error.stack,
+      'CLI',
+    );
     process.exit(1);
   } finally {
     await app.close();

@@ -9,7 +9,7 @@ export interface PermissionRequirement {
 
 /**
  * Decorator para especificar permissões necessárias em uma rota
- * 
+ *
  * @example
  * @RequirePermission('schools', 'create')
  * async createSchool() { }
@@ -19,17 +19,20 @@ export const RequirePermission = (resource: string, action: string) =>
 
 /**
  * Decorator para especificar que a rota requer ser proprietário
- * 
+ *
  * @example
  * @RequireOwner()
  * async transferOwnership() { }
  */
 export const RequireOwner = () =>
-  SetMetadata(PERMISSION_KEY, { resource: '*', action: '*' } as PermissionRequirement);
+  SetMetadata(PERMISSION_KEY, {
+    resource: '*',
+    action: '*',
+  } as PermissionRequirement);
 
 /**
  * Decorator para especificar que a rota requer um cargo específico
- * 
+ *
  * @example
  * @RequireRole('admin')
  * async manageUsers() { }

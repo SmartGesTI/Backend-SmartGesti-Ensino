@@ -27,14 +27,17 @@ export class IngestionService {
   /**
    * Ingere um documento markdown na knowledge base
    */
-  async ingestDocument(filePath: string, content?: string): Promise<IngestResponseDto> {
+  async ingestDocument(
+    filePath: string,
+    content?: string,
+  ): Promise<IngestResponseDto> {
     try {
       this.logger.log(`Ingerindo documento: ${filePath}`, 'IngestionService');
 
       const client = this.supabase.getClient();
 
       // 1. Ler ou usar conteúdo fornecido
-      const fileContent = content || await fs.readFile(filePath, 'utf-8');
+      const fileContent = content || (await fs.readFile(filePath, 'utf-8'));
 
       // 2. Parse markdown com frontmatter
       const parsed = this.parseMarkdown(fileContent, filePath);
@@ -54,16 +57,17 @@ export class IngestionService {
       if (existing && existing.content_hash === contentHash) {
         // Content hasn't changed, but always update metadata (route_pattern, menuPath, tags)
         const metadataUpdate = {
-          route_pattern: parsed.frontmatter.routePattern || parsed.frontmatter.route || null,
+          route_pattern:
+            parsed.frontmatter.routePattern || parsed.frontmatter.route || null,
           menu_path: parsed.frontmatter.menuPath || null,
           tags: parsed.frontmatter.tags || [],
         };
-        
+
         // Check if metadata actually changed
-        const metadataChanged = 
+        const metadataChanged =
           existing.route_pattern !== metadataUpdate.route_pattern ||
           existing.menu_path !== metadataUpdate.menu_path;
-        
+
         if (metadataChanged) {
           await client
             .from('rag_documents')
@@ -79,14 +83,14 @@ export class IngestionService {
             'IngestionService',
           );
         }
-        
+
         return {
           success: true,
           documentId: existing.id,
           title: existing.title,
           chunksCreated: 0,
-          message: metadataChanged 
-            ? 'Metadados atualizados (conteúdo não mudou)' 
+          message: metadataChanged
+            ? 'Metadados atualizados (conteúdo não mudou)'
             : 'Documento não mudou, nenhuma atualização necessária',
         };
       }
@@ -101,7 +105,10 @@ export class IngestionService {
       }
 
       // 6. Criar chunks
-      const chunks = this.chunkService.chunkContent(parsed.content, parsed.frontmatter);
+      const chunks = this.chunkService.chunkContent(
+        parsed.content,
+        parsed.frontmatter,
+      );
 
       if (chunks.length === 0) {
         this.logger.warn(
@@ -119,7 +126,7 @@ export class IngestionService {
 
       // 7. Gerar embeddings em batch
       const embeddings = await this.embeddingService.generateEmbeddings(
-        chunks.map(c => c.content),
+        chunks.map((c) => c.content),
       );
 
       // 8. Salvar documento
@@ -128,7 +135,8 @@ export class IngestionService {
         title: parsed.frontmatter.title,
         file_path: filePath,
         category: parsed.frontmatter.category,
-        route_pattern: parsed.frontmatter.routePattern || parsed.frontmatter.route || null,
+        route_pattern:
+          parsed.frontmatter.routePattern || parsed.frontmatter.route || null,
         menu_path: parsed.frontmatter.menuPath || null,
         tags: parsed.frontmatter.tags || [],
         metadata: {
@@ -201,7 +209,7 @@ export class IngestionService {
 
     try {
       const files = await this.findMarkdownFiles(dirPath);
-      
+
       this.logger.log(
         `Encontrados ${files.length} arquivos markdown em ${dirPath}`,
         'IngestionService',
@@ -226,9 +234,9 @@ export class IngestionService {
         }
       }
 
-      const successful = results.filter(r => r.success).length;
+      const successful = results.filter((r) => r.success).length;
       const totalChunks = results.reduce((sum, r) => sum + r.chunksCreated, 0);
-      
+
       this.logger.log(
         `Ingestão completa: ${successful}/${files.length} documentos, ${totalChunks} chunks`,
         'IngestionService',
@@ -306,11 +314,11 @@ export class IngestionService {
    */
   async reindexAll(dirPath: string): Promise<IngestResponseDto[]> {
     this.logger.log('Reindexando toda a knowledge base...', 'IngestionService');
-    
+
     const client = this.supabase.getClient();
     // Deletar todos os documentos (chunks serão deletados em cascade)
     await client.from('rag_documents').delete().gte('created_at', '1900-01-01');
-    
+
     return this.ingestDirectory(dirPath);
   }
 
@@ -319,7 +327,7 @@ export class IngestionService {
    */
   private parseMarkdown(content: string, filePath: string): ParsedDocument {
     const fileName = path.basename(filePath, '.md');
-    
+
     // 1. Tentar frontmatter YAML (entre ---)
     const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
     const yamlMatch = content.match(frontmatterRegex);
@@ -330,7 +338,7 @@ export class IngestionService {
 
       try {
         const frontmatter = yaml.parse(frontmatterStr) as DocumentFrontmatter;
-        
+
         // Validar campos obrigatórios
         if (!frontmatter.id) frontmatter.id = fileName;
         if (!frontmatter.title) frontmatter.title = frontmatter.id;
@@ -369,10 +377,13 @@ export class IngestionService {
   /**
    * Parse formato customizado: [Documento:], [Menu:], [Rota:]
    */
-  private parseCustomFormat(content: string, filePath: string): ParsedDocument | null {
+  private parseCustomFormat(
+    content: string,
+    filePath: string,
+  ): ParsedDocument | null {
     const fileName = path.basename(filePath, '.md');
     const lines = content.split('\n');
-    
+
     let title = '';
     let menuPath = '';
     let route = '';
@@ -381,7 +392,7 @@ export class IngestionService {
     // Buscar metadados nas primeiras linhas
     for (let i = 0; i < Math.min(10, lines.length); i++) {
       const line = lines[i].trim();
-      
+
       // [Documento: Dashboard - Visão Geral]
       const docMatch = line.match(/^\[Documento:\s*(.+?)\]$/i);
       if (docMatch) {
@@ -389,7 +400,7 @@ export class IngestionService {
         contentStartIndex = i + 1;
         continue;
       }
-      
+
       // [Menu: Painel > Visão Geral]
       const menuMatch = line.match(/^\[Menu:\s*(.+?)\]$/i);
       if (menuMatch) {
@@ -397,7 +408,7 @@ export class IngestionService {
         contentStartIndex = i + 1;
         continue;
       }
-      
+
       // [Rota: /escola/:slug/painel]
       const routeMatch = line.match(/^\[Rota:\s*(.+?)\]$/i);
       if (routeMatch) {
@@ -405,7 +416,7 @@ export class IngestionService {
         contentStartIndex = i + 1;
         continue;
       }
-      
+
       // Se a linha não é metadado e não está vazia, parar de buscar
       if (line && !line.startsWith('[')) {
         break;
@@ -416,7 +427,7 @@ export class IngestionService {
     if (title) {
       const category = this.inferCategoryFromPath(filePath);
       const markdownContent = lines.slice(contentStartIndex).join('\n').trim();
-      
+
       this.logger.debug(
         `Parsed custom format: title="${title}", menu="${menuPath}", route="${route}", category="${category}"`,
         'IngestionService',
@@ -440,19 +451,37 @@ export class IngestionService {
   /**
    * Infere categoria baseada no caminho do arquivo
    */
-  private inferCategoryFromPath(filePath: string): 'ia' | 'dashboard' | 'academico' | 'administracao' | 'calendario' | 'sites' | 'documentos' | 'configuracoes' | 'geral' {
+  private inferCategoryFromPath(
+    filePath: string,
+  ):
+    | 'ia'
+    | 'dashboard'
+    | 'academico'
+    | 'administracao'
+    | 'calendario'
+    | 'sites'
+    | 'documentos'
+    | 'configuracoes'
+    | 'geral' {
     const pathLower = filePath.toLowerCase();
-    
+
     if (pathLower.includes('/dashboard/') || pathLower.includes('/painel/')) {
       return 'dashboard';
     }
     if (pathLower.includes('/ia/') || pathLower.includes('/agente')) {
       return 'ia';
     }
-    if (pathLower.includes('/academico/') || pathLower.includes('/turmas/') || pathLower.includes('/alunos/')) {
+    if (
+      pathLower.includes('/academico/') ||
+      pathLower.includes('/turmas/') ||
+      pathLower.includes('/alunos/')
+    ) {
       return 'academico';
     }
-    if (pathLower.includes('/administracao/') || pathLower.includes('/admin/')) {
+    if (
+      pathLower.includes('/administracao/') ||
+      pathLower.includes('/admin/')
+    ) {
       return 'administracao';
     }
     if (pathLower.includes('/calendario/') || pathLower.includes('/eventos/')) {
@@ -464,10 +493,13 @@ export class IngestionService {
     if (pathLower.includes('/documentos/')) {
       return 'documentos';
     }
-    if (pathLower.includes('/configuracoes/') || pathLower.includes('/config/')) {
+    if (
+      pathLower.includes('/configuracoes/') ||
+      pathLower.includes('/config/')
+    ) {
       return 'configuracoes';
     }
-    
+
     return 'geral';
   }
 
@@ -479,10 +511,10 @@ export class IngestionService {
 
     async function scan(dir: string) {
       const entries = await fs.readdir(dir, { withFileTypes: true });
-      
+
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
-        
+
         if (entry.isDirectory()) {
           await scan(fullPath);
         } else if (entry.isFile() && entry.name.endsWith('.md')) {

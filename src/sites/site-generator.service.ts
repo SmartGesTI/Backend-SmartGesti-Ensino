@@ -291,10 +291,14 @@ export class SiteGeneratorService {
     private readonly logger: LoggerService,
   ) {
     this.openaiApiKey = this.configService.get<string>('OPENAI_API_KEY') || '';
-    this.defaultModel = this.configService.get<string>('OPENAI_DEFAULT_MODEL') || 'gpt-4.1-mini';
+    this.defaultModel =
+      this.configService.get<string>('OPENAI_DEFAULT_MODEL') || 'gpt-4.1-mini';
 
     if (!this.openaiApiKey) {
-      this.logger.warn('OPENAI_API_KEY não configurada. Geração de sites por IA não funcionará.', 'SiteGeneratorService');
+      this.logger.warn(
+        'OPENAI_API_KEY não configurada. Geração de sites por IA não funcionará.',
+        'SiteGeneratorService',
+      );
     } else {
       setDefaultOpenAIKey(this.openaiApiKey);
     }
@@ -325,24 +329,27 @@ export class SiteGeneratorService {
 
     const modelToUse = model || this.defaultModel;
 
-    this.logger.log(`Gerando site com modelo: ${modelToUse}`, 'SiteGeneratorService');
+    this.logger.log(
+      `Gerando site com modelo: ${modelToUse}`,
+      'SiteGeneratorService',
+    );
 
     try {
       // Montar prompt completo
       let fullPrompt = prompt;
-      
+
       if (language !== 'pt-BR') {
         fullPrompt += `\n\nIdioma do conteúdo: ${language}`;
       }
-      
+
       if (tone) {
         fullPrompt += `\n\nTom do texto: ${tone}`;
       }
-      
+
       if (businessContext) {
         fullPrompt += `\n\nContexto do negócio: ${businessContext}`;
       }
-      
+
       fullPrompt += `\n\nLimite de seções: máximo ${maxSections} blocos na estrutura principal`;
 
       // Criar agente
@@ -358,9 +365,18 @@ export class SiteGeneratorService {
       // LOG DETALHADO DA RESPOSTA
       this.logger.log(`=== RESPOSTA DO AGENTE ==`, 'SiteGeneratorService');
       this.logger.log(`Prompt enviado: ${fullPrompt}`, 'SiteGeneratorService');
-      this.logger.log(`Result keys: ${Object.keys(result).join(', ')}`, 'SiteGeneratorService');
-      this.logger.log(`finalOutput (primeiros 500 chars): ${(result.finalOutput || '').substring(0, 500)}`, 'SiteGeneratorService');
-      this.logger.log(`finalOutput length: ${(result.finalOutput || '').length}`, 'SiteGeneratorService');
+      this.logger.log(
+        `Result keys: ${Object.keys(result).join(', ')}`,
+        'SiteGeneratorService',
+      );
+      this.logger.log(
+        `finalOutput (primeiros 500 chars): ${(result.finalOutput || '').substring(0, 500)}`,
+        'SiteGeneratorService',
+      );
+      this.logger.log(
+        `finalOutput length: ${(result.finalOutput || '').length}`,
+        'SiteGeneratorService',
+      );
 
       // Parsear resposta
       const output = result.finalOutput || '';
@@ -370,9 +386,13 @@ export class SiteGeneratorService {
         // Limpar markdown se presente
         let cleanedOutput = output.trim();
         if (cleanedOutput.startsWith('```json')) {
-          cleanedOutput = cleanedOutput.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          cleanedOutput = cleanedOutput
+            .replace(/^```json\s*/, '')
+            .replace(/\s*```$/, '');
         } else if (cleanedOutput.startsWith('```')) {
-          cleanedOutput = cleanedOutput.replace(/^```\s*/, '').replace(/\s*```$/, '');
+          cleanedOutput = cleanedOutput
+            .replace(/^```\s*/, '')
+            .replace(/\s*```$/, '');
         }
 
         document = JSON.parse(cleanedOutput);
@@ -391,10 +411,22 @@ export class SiteGeneratorService {
 
       // LOG DO DOCUMENTO SANITIZADO
       this.logger.log(`=== DOCUMENTO GERADO ==`, 'SiteGeneratorService');
-      this.logger.log(`Meta: ${JSON.stringify(document.meta)}`, 'SiteGeneratorService');
-      this.logger.log(`Structure blocks: ${document.structure.length}`, 'SiteGeneratorService');
-      this.logger.log(`Block types: ${document.structure.map(b => b.type).join(', ')}`, 'SiteGeneratorService');
-      this.logger.log(`Structure (primeiros 1000 chars): ${JSON.stringify(document.structure).substring(0, 1000)}`, 'SiteGeneratorService');
+      this.logger.log(
+        `Meta: ${JSON.stringify(document.meta)}`,
+        'SiteGeneratorService',
+      );
+      this.logger.log(
+        `Structure blocks: ${document.structure.length}`,
+        'SiteGeneratorService',
+      );
+      this.logger.log(
+        `Block types: ${document.structure.map((b) => b.type).join(', ')}`,
+        'SiteGeneratorService',
+      );
+      this.logger.log(
+        `Structure (primeiros 1000 chars): ${JSON.stringify(document.structure).substring(0, 1000)}`,
+        'SiteGeneratorService',
+      );
 
       const processingTime = Date.now() - startTime;
 
@@ -405,7 +437,10 @@ export class SiteGeneratorService {
         model: modelToUse,
       };
     } catch (error: any) {
-      this.logger.error(`Erro ao gerar site: ${error.message}`, 'SiteGeneratorService');
+      this.logger.error(
+        `Erro ao gerar site: ${error.message}`,
+        'SiteGeneratorService',
+      );
       return {
         success: false,
         error: error.message || 'Erro desconhecido durante a geração',
@@ -453,9 +488,13 @@ Retorne APENAS o JSON da seção modificada.`;
       try {
         let cleanedOutput = output.trim();
         if (cleanedOutput.startsWith('```json')) {
-          cleanedOutput = cleanedOutput.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          cleanedOutput = cleanedOutput
+            .replace(/^```json\s*/, '')
+            .replace(/\s*```$/, '');
         } else if (cleanedOutput.startsWith('```')) {
-          cleanedOutput = cleanedOutput.replace(/^```\s*/, '').replace(/\s*```$/, '');
+          cleanedOutput = cleanedOutput
+            .replace(/^```\s*/, '')
+            .replace(/\s*```$/, '');
         }
 
         section = JSON.parse(cleanedOutput);
@@ -474,7 +513,10 @@ Retorne APENAS o JSON da seção modificada.`;
 
       return { success: true, section };
     } catch (error: any) {
-      this.logger.error(`Erro ao refinar seção: ${error.message}`, 'SiteGeneratorService');
+      this.logger.error(
+        `Erro ao refinar seção: ${error.message}`,
+        'SiteGeneratorService',
+      );
       return {
         success: false,
         error: error.message || 'Erro desconhecido',
@@ -490,7 +532,12 @@ Retorne APENAS o JSON da seção modificada.`;
     currentDocument: GeneratedSiteDocument,
     instruction: string,
     options: { model?: string } = {},
-  ): Promise<{ success: boolean; patches?: PatchOperation[]; error?: string; processingTime?: number }> {
+  ): Promise<{
+    success: boolean;
+    patches?: PatchOperation[];
+    error?: string;
+    processingTime?: number;
+  }> {
     if (!this.openaiApiKey) {
       return {
         success: false,
@@ -501,7 +548,10 @@ Retorne APENAS o JSON da seção modificada.`;
     const startTime = Date.now();
     const modelToUse = options.model || this.defaultModel;
 
-    this.logger.log(`[PATCH MODE] Gerando patches | Modelo: ${modelToUse}`, 'SiteGeneratorService');
+    this.logger.log(
+      `[PATCH MODE] Gerando patches | Modelo: ${modelToUse}`,
+      'SiteGeneratorService',
+    );
 
     try {
       // Resumo simplificado do documento para o prompt (reduz tokens)
@@ -539,7 +589,10 @@ Gere o array de patches JSON Patch para aplicar esta alteração.`;
       const result = await run(agent, prompt);
       const output = result.finalOutput || '';
 
-      this.logger.log(`[PATCH MODE] Resposta: ${output.substring(0, 500)}`, 'SiteGeneratorService');
+      this.logger.log(
+        `[PATCH MODE] Resposta: ${output.substring(0, 500)}`,
+        'SiteGeneratorService',
+      );
 
       // Parsear patches
       let patches: PatchOperation[];
@@ -547,9 +600,13 @@ Gere o array de patches JSON Patch para aplicar esta alteração.`;
       try {
         let cleanedOutput = output.trim();
         if (cleanedOutput.startsWith('```json')) {
-          cleanedOutput = cleanedOutput.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          cleanedOutput = cleanedOutput
+            .replace(/^```json\s*/, '')
+            .replace(/\s*```$/, '');
         } else if (cleanedOutput.startsWith('```')) {
-          cleanedOutput = cleanedOutput.replace(/^```\s*/, '').replace(/\s*```$/, '');
+          cleanedOutput = cleanedOutput
+            .replace(/^```\s*/, '')
+            .replace(/\s*```$/, '');
         }
 
         patches = JSON.parse(cleanedOutput);
@@ -569,16 +626,25 @@ Gere o array de patches JSON Patch para aplicar esta alteração.`;
       }
 
       // Validar cada patch
-      patches = patches.filter(p => {
+      patches = patches.filter((p) => {
         if (!p.op || !p.path) return false;
-        if (!['add', 'remove', 'replace', 'move', 'copy', 'test'].includes(p.op)) return false;
+        if (
+          !['add', 'remove', 'replace', 'move', 'copy', 'test'].includes(p.op)
+        )
+          return false;
         return true;
       });
 
       const processingTime = Date.now() - startTime;
 
-      this.logger.log(`[PATCH MODE] ${patches.length} patches gerados em ${processingTime}ms`, 'SiteGeneratorService');
-      this.logger.log(`[PATCH MODE] Patches: ${JSON.stringify(patches)}`, 'SiteGeneratorService');
+      this.logger.log(
+        `[PATCH MODE] ${patches.length} patches gerados em ${processingTime}ms`,
+        'SiteGeneratorService',
+      );
+      this.logger.log(
+        `[PATCH MODE] Patches: ${JSON.stringify(patches)}`,
+        'SiteGeneratorService',
+      );
 
       return {
         success: true,
@@ -586,7 +652,10 @@ Gere o array de patches JSON Patch para aplicar esta alteração.`;
         processingTime,
       };
     } catch (error: any) {
-      this.logger.error(`[PATCH MODE] Erro: ${error.message}`, 'SiteGeneratorService');
+      this.logger.error(
+        `[PATCH MODE] Erro: ${error.message}`,
+        'SiteGeneratorService',
+      );
       return {
         success: false,
         error: error.message || 'Erro ao gerar patches',
@@ -613,16 +682,28 @@ Gere o array de patches JSON Patch para aplicar esta alteração.`;
     // Merge theme se presente
     if (doc.theme) {
       if (doc.theme.colors) {
-        sanitized.theme.colors = { ...DEFAULT_THEME.colors, ...doc.theme.colors };
+        sanitized.theme.colors = {
+          ...DEFAULT_THEME.colors,
+          ...doc.theme.colors,
+        };
       }
       if (doc.theme.typography) {
-        sanitized.theme.typography = { ...DEFAULT_THEME.typography, ...doc.theme.typography };
+        sanitized.theme.typography = {
+          ...DEFAULT_THEME.typography,
+          ...doc.theme.typography,
+        };
       }
       if (doc.theme.spacing) {
-        sanitized.theme.spacing = { ...DEFAULT_THEME.spacing, ...doc.theme.spacing };
+        sanitized.theme.spacing = {
+          ...DEFAULT_THEME.spacing,
+          ...doc.theme.spacing,
+        };
       }
       if (doc.theme.effects) {
-        sanitized.theme.effects = { ...DEFAULT_THEME.effects, ...doc.theme.effects };
+        sanitized.theme.effects = {
+          ...DEFAULT_THEME.effects,
+          ...doc.theme.effects,
+        };
       }
     }
 
@@ -631,25 +712,27 @@ Gere o array de patches JSON Patch para aplicar esta alteração.`;
       const usedIds = new Set<string>();
       let idCounter = 1;
 
-      sanitized.structure = doc.structure.map((block: any) => {
-        if (!block || typeof block !== 'object') return null;
+      sanitized.structure = doc.structure
+        .map((block: any) => {
+          if (!block || typeof block !== 'object') return null;
 
-        // Garantir id único
-        let id = block.id;
-        if (!id || usedIds.has(id)) {
-          id = `${block.type || 'block'}-${idCounter++}`;
-          while (usedIds.has(id)) {
+          // Garantir id único
+          let id = block.id;
+          if (!id || usedIds.has(id)) {
             id = `${block.type || 'block'}-${idCounter++}`;
+            while (usedIds.has(id)) {
+              id = `${block.type || 'block'}-${idCounter++}`;
+            }
           }
-        }
-        usedIds.add(id);
+          usedIds.add(id);
 
-        return {
-          id,
-          type: block.type || 'box',
-          props: block.props || {},
-        };
-      }).filter(Boolean);
+          return {
+            id,
+            type: block.type || 'box',
+            props: block.props || {},
+          };
+        })
+        .filter(Boolean);
     }
 
     return sanitized;
@@ -658,13 +741,37 @@ Gere o array de patches JSON Patch para aplicar esta alteração.`;
   /**
    * Lista templates disponíveis
    */
-  getAvailableTemplates(): Array<{ id: string; name: string; description: string }> {
+  getAvailableTemplates(): Array<{
+    id: string;
+    name: string;
+    description: string;
+  }> {
     return [
-      { id: 'landing-saas', name: 'SaaS / Software', description: 'Template para produtos digitais' },
-      { id: 'landing-escola', name: 'Escola / Curso', description: 'Para instituições de ensino' },
-      { id: 'landing-portfolio', name: 'Portfolio', description: 'Para freelancers e criativos' },
-      { id: 'landing-empresa', name: 'Empresa / Serviços', description: 'Para empresas e consultorias' },
-      { id: 'landing-evento', name: 'Evento', description: 'Para conferências e workshops' },
+      {
+        id: 'landing-saas',
+        name: 'SaaS / Software',
+        description: 'Template para produtos digitais',
+      },
+      {
+        id: 'landing-escola',
+        name: 'Escola / Curso',
+        description: 'Para instituições de ensino',
+      },
+      {
+        id: 'landing-portfolio',
+        name: 'Portfolio',
+        description: 'Para freelancers e criativos',
+      },
+      {
+        id: 'landing-empresa',
+        name: 'Empresa / Serviços',
+        description: 'Para empresas e consultorias',
+      },
+      {
+        id: 'landing-evento',
+        name: 'Evento',
+        description: 'Para conferências e workshops',
+      },
     ];
   }
 }

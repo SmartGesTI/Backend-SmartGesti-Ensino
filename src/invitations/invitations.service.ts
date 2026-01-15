@@ -30,7 +30,8 @@ export class InvitationsService {
     expiresAt.setDate(expiresAt.getDate() + 7);
 
     // Verificar se já existe convite pendente para este email
-    const { data: existingInvite } = await this.supabase.getClient()
+    const { data: existingInvite } = await this.supabase
+      .getClient()
       .from('invitations')
       .select('id')
       .eq('email', email)
@@ -45,7 +46,8 @@ export class InvitationsService {
     }
 
     // Criar convite
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('invitations')
       .insert({
         tenant_id: tenantId,
@@ -75,7 +77,8 @@ export class InvitationsService {
    * Lista todos os convites de um tenant
    */
   async findAll(tenantId: string, status?: string) {
-    const query = this.supabase.getClient()
+    const query = this.supabase
+      .getClient()
       .from('invitations')
       .select('*, roles(name), users!invited_by(full_name, email)')
       .eq('tenant_id', tenantId)
@@ -98,7 +101,8 @@ export class InvitationsService {
    * Busca um convite por token
    */
   async findByToken(token: string) {
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('invitations')
       .select('*, roles(name, slug), tenants(name, subdomain)')
       .eq('token', token)
@@ -128,7 +132,8 @@ export class InvitationsService {
     const expiresAt = new Date(invitation.expires_at);
     if (now > expiresAt) {
       // Marcar como expirado
-      await this.supabase.getClient()
+      await this.supabase
+        .getClient()
         .from('invitations')
         .update({ status: 'expired' })
         .eq('id', invitation.id);
@@ -137,7 +142,8 @@ export class InvitationsService {
     }
 
     // Verificar se o email do usuário corresponde
-    const { data: user } = await this.supabase.getClient()
+    const { data: user } = await this.supabase
+      .getClient()
       .from('users')
       .select('email')
       .eq('id', userId)
@@ -150,7 +156,8 @@ export class InvitationsService {
     }
 
     // Atribuir cargo ao usuário
-    const { error: roleError } = await this.supabase.getClient()
+    const { error: roleError } = await this.supabase
+      .getClient()
       .from('user_roles')
       .insert({
         user_id: userId,
@@ -176,7 +183,8 @@ export class InvitationsService {
     }
 
     // Marcar convite como aceito
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('invitations')
       .update({
         status: 'accepted',
@@ -197,7 +205,8 @@ export class InvitationsService {
    * Cancela um convite
    */
   async cancel(id: string, tenantId: string) {
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('invitations')
       .update({ status: 'cancelled' })
       .eq('id', id)
@@ -217,7 +226,8 @@ export class InvitationsService {
    * Deleta um convite
    */
   async remove(id: string, tenantId: string) {
-    const { error } = await this.supabase.getClient()
+    const { error } = await this.supabase
+      .getClient()
       .from('invitations')
       .delete()
       .eq('id', id)

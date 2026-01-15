@@ -19,7 +19,7 @@ export class CreateTenantDto {
   endereco_cidade?: string;
   endereco_estado?: string;
   endereco_cep?: string;
-  
+
   // Campos para adicionar proprietário automaticamente
   owner_email?: string;
   owner_auth0_id?: string; // UUID do Supabase (armazenado em auth0_id)

@@ -30,10 +30,10 @@ export interface RequestPermissionContext {
 export class PermissionsCacheService {
   // Cache global (entre requests) - Map<cacheKey, CachedPermissions>
   private readonly cache = new Map<string, CachedPermissions>();
-  
+
   // TTL do cache em ms (5 minutos)
   private readonly CACHE_TTL = 5 * 60 * 1000;
-  
+
   // Intervalo de limpeza do cache (10 minutos)
   private readonly CLEANUP_INTERVAL = 10 * 60 * 1000;
 

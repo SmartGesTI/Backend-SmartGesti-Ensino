@@ -14,9 +14,10 @@ import { RAG_CATEGORIES, SEARCH_CONFIG } from '../constants/rag.constants';
 @Injectable()
 export class SemanticSearchTool implements Tool {
   name = 'rag_search';
-  
-  description = 'Busca informações na knowledge base do SmartGesti-Ensino. Use para encontrar documentação sobre páginas, funcionalidades, menus, rotas, workflows e troubleshooting.';
-  
+
+  description =
+    'Busca informações na knowledge base do SmartGesti-Ensino. Use para encontrar documentação sobre páginas, funcionalidades, menus, rotas, workflows e troubleshooting.';
+
   parameters = {
     type: 'object',
     properties: {
@@ -27,7 +28,8 @@ export class SemanticSearchTool implements Tool {
       category: {
         type: ['string', 'null'],
         enum: [...RAG_CATEGORIES, null],
-        description: 'Categoria para filtrar (opcional). Valores: ia, dashboard, academico, administracao, calendario, sites, documentos, configuracoes, geral',
+        description:
+          'Categoria para filtrar (opcional). Valores: ia, dashboard, academico, administracao, calendario, sites, documentos, configuracoes, geral',
       },
       topK: {
         type: ['integer', 'null'],

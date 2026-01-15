@@ -63,7 +63,8 @@ class SimpleAgent extends BaseAgent {
     context?: AgentContext,
   ): Promise<AgentResult> {
     const provider = this.config.provider || this.aiConfig.getDefaultProvider();
-    const modelName = this.config.model || this.modelConfig.getProvider(provider)?.defaultModel;
+    const modelName =
+      this.config.model || this.modelConfig.getProvider(provider)?.defaultModel;
 
     if (!modelName) {
       throw new Error(`No model specified for agent ${this.config.name}`);
@@ -154,7 +155,8 @@ class SimpleAgent extends BaseAgent {
             promptTokens: result.usage.inputTokens || 0,
             completionTokens: result.usage.outputTokens || 0,
             totalTokens:
-              (result.usage.inputTokens || 0) + (result.usage.outputTokens || 0),
+              (result.usage.inputTokens || 0) +
+              (result.usage.outputTokens || 0),
           }
         : undefined;
 
@@ -174,7 +176,6 @@ class SimpleAgent extends BaseAgent {
       );
       throw error;
     }
-
   }
 
   async *stream(
@@ -182,7 +183,8 @@ class SimpleAgent extends BaseAgent {
     context?: AgentContext,
   ): AsyncIterable<AgentResult> {
     const provider = this.config.provider || this.aiConfig.getDefaultProvider();
-    const modelName = this.config.model || this.modelConfig.getProvider(provider)?.defaultModel;
+    const modelName =
+      this.config.model || this.modelConfig.getProvider(provider)?.defaultModel;
 
     if (!modelName) {
       throw new Error(`No model specified for agent ${this.config.name}`);

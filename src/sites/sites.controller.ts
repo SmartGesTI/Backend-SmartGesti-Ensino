@@ -12,7 +12,11 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/auth.guard';
 import { SitesService, Site } from './sites.service';
-import { SiteGeneratorService, GenerationOptions, GenerationResult } from './site-generator.service';
+import {
+  SiteGeneratorService,
+  GenerationOptions,
+  GenerationResult,
+} from './site-generator.service';
 import { LoggerService } from '../common/logger/logger.service';
 
 @Controller('sites')
@@ -136,7 +140,12 @@ export class SitesController {
   async applyPatch(
     @Param('id') id: string,
     @Query('projectId') projectId: string,
-    @Body() body: { patches: any[]; authorType?: 'user' | 'ai' | 'system'; description?: string },
+    @Body()
+    body: {
+      patches: any[];
+      authorType?: 'user' | 'ai' | 'system';
+      description?: string;
+    },
     @Request() req: any,
   ): Promise<Site> {
     if (!projectId) {
@@ -178,7 +187,12 @@ export class SitesController {
     }
 
     const userId = req.user?.sub || req.user?.id;
-    return this.sitesService.rollbackToVersion(id, projectId, parseInt(version, 10), userId);
+    return this.sitesService.rollbackToVersion(
+      id,
+      projectId,
+      parseInt(version, 10),
+      userId,
+    );
   }
 
   /**

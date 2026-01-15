@@ -5,7 +5,10 @@ import { z } from 'zod';
 import { ModelProviderFactory } from '../providers/model-provider.factory';
 import { ModelProviderConfigService } from '../config/model-provider.config';
 import { AiCoreConfigService } from '../config/ai-core.config';
-import { StructuredOutputOptions, StructuredOutputResult } from './structured.types';
+import {
+  StructuredOutputOptions,
+  StructuredOutputResult,
+} from './structured.types';
 
 @Injectable()
 export class StructuredOutputService {
@@ -23,7 +26,8 @@ export class StructuredOutputService {
     options: Omit<StructuredOutputOptions, 'schema'> = {},
   ): Promise<StructuredOutputResult<z.infer<T>>> {
     const provider = options.provider || this.aiConfig.getDefaultProvider();
-    const modelName = options.model || this.modelConfig.getProvider(provider)?.defaultModel;
+    const modelName =
+      options.model || this.modelConfig.getProvider(provider)?.defaultModel;
 
     if (!modelName) {
       throw new Error(`No model specified for provider ${provider}`);
@@ -31,11 +35,15 @@ export class StructuredOutputService {
 
     const model = this.providerFactory.getModel(provider, modelName);
     if (!model) {
-      throw new Error(`Model ${modelName} not available for provider ${provider}`);
+      throw new Error(
+        `Model ${modelName} not available for provider ${provider}`,
+      );
     }
 
     const modelConfig = this.modelConfig.getModel(modelName);
-    const messages = Array.isArray(prompt) ? prompt : [{ role: 'user' as const, content: prompt }];
+    const messages = Array.isArray(prompt)
+      ? prompt
+      : [{ role: 'user' as const, content: prompt }];
 
     this.logger.debug(
       `Generating structured object with model ${modelName} from provider ${provider}`,
@@ -66,7 +74,10 @@ export class StructuredOutputService {
         finishReason: result.finishReason as 'stop' | 'length' | 'error',
       };
     } catch (error) {
-      this.logger.error(`Error generating structured object: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error generating structured object: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

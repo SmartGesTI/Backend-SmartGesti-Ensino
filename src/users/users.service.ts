@@ -8,7 +8,10 @@ import { UserStatusDto } from './dto/user-status.dto';
 @Injectable()
 export class UsersService {
   // Cache de usuários para evitar consultas repetidas
-  private userCacheBySupabaseId = new Map<string, { user: User; expiresAt: number }>();
+  private userCacheBySupabaseId = new Map<
+    string,
+    { user: User; expiresAt: number }
+  >();
   private userCacheById = new Map<string, { user: User; expiresAt: number }>();
   private readonly CACHE_TTL = 60 * 1000; // 1 minuto (menor que tenant pois user muda mais)
 
@@ -38,34 +41,47 @@ export class UsersService {
     this.userCacheBySupabaseId.set(user.auth0_id, cacheEntry);
   }
 
-  async syncUserFromSupabase(supabaseUser: SupabaseUser, subdomain?: string): Promise<User> {
+  async syncUserFromSupabase(
+    supabaseUser: SupabaseUser,
+    subdomain?: string,
+  ): Promise<User> {
     // VALIDAÇÃO CRÍTICA: Verificar se email foi verificado
     // Para usuários OAuth (Google, etc), considerar email como verificado
     // pois o provedor OAuth já faz essa verificação
-    // 
+    //
     // Verificamos:
     // 1. Se email_verified está explicitamente true
     // 2. Se há user_metadata (indica que é um usuário OAuth, que já tem email verificado)
-    const isEmailVerified = supabaseUser.email_verified === true || 
-                            // Se há user_metadata, é provável que seja um usuário OAuth (Google, etc)
-                            // que já tem email verificado pelo provedor
-                            (supabaseUser.user_metadata && Object.keys(supabaseUser.user_metadata).length > 0);
-    
+    const isEmailVerified =
+      supabaseUser.email_verified === true ||
+      // Se há user_metadata, é provável que seja um usuário OAuth (Google, etc)
+      // que já tem email verificado pelo provedor
+      (supabaseUser.user_metadata &&
+        Object.keys(supabaseUser.user_metadata).length > 0);
+
     if (!isEmailVerified) {
-      this.logger.warn('User attempted to login with unverified email', 'UsersService', {
-        email: supabaseUser.email,
-        supabaseUserId: supabaseUser.id,
-        email_verified: supabaseUser.email_verified,
-        has_metadata: !!supabaseUser.user_metadata,
-        metadata_keys: supabaseUser.user_metadata ? Object.keys(supabaseUser.user_metadata) : [],
-      });
-      throw new Error('Email não verificado. Verifique seu email antes de continuar.');
+      this.logger.warn(
+        'User attempted to login with unverified email',
+        'UsersService',
+        {
+          email: supabaseUser.email,
+          supabaseUserId: supabaseUser.id,
+          email_verified: supabaseUser.email_verified,
+          has_metadata: !!supabaseUser.user_metadata,
+          metadata_keys: supabaseUser.user_metadata
+            ? Object.keys(supabaseUser.user_metadata)
+            : [],
+        },
+      );
+      throw new Error(
+        'Email não verificado. Verifique seu email antes de continuar.',
+      );
     }
 
     // IMPORTANTE: Verificar se o email está em tenant_owners ANTES de buscar/criar usuário
     // Isso permite vincular automaticamente owners mesmo quando o usuário ainda não existe
     let ownerTenantId: string | undefined;
-    
+
     // Buscar tenant pelo email em tenant_owners (via join com users)
     // Isso funciona porque quando criamos o tenant, já adicionamos o owner pelo email
     const { data: ownershipByEmail } = await this.supabase
@@ -74,14 +90,14 @@ export class UsersService {
       .eq('users.email', supabaseUser.email)
       .limit(1)
       .maybeSingle();
-    
+
     if (ownershipByEmail) {
       ownerTenantId = ownershipByEmail.tenant_id;
       // users pode ser um array ou objeto dependendo do join, tratar como array
-      const usersData = Array.isArray(ownershipByEmail.users) 
-        ? ownershipByEmail.users[0] 
+      const usersData = Array.isArray(ownershipByEmail.users)
+        ? ownershipByEmail.users[0]
         : ownershipByEmail.users;
-      
+
       this.logger.log(
         'User email found in tenant_owners, will link automatically',
         'UsersService',
@@ -100,9 +116,9 @@ export class UsersService {
       .select('*')
       .or(`auth0_id.eq.${supabaseUser.id},email.eq.${supabaseUser.email}`)
       .limit(2);
-    
+
     const existingUser = users?.[0];
-    
+
     // Se usuário já existe e não encontramos owner pelo email, verificar pelo user_id
     if (existingUser && !ownerTenantId) {
       const { data: ownership } = await this.supabase
@@ -111,7 +127,7 @@ export class UsersService {
         .eq('user_id', existingUser.id)
         .limit(1)
         .maybeSingle();
-      
+
       if (ownership) {
         ownerTenantId = ownership.tenant_id;
         this.logger.log(
@@ -133,10 +149,13 @@ export class UsersService {
       if (tenant) {
         tenantId = tenant.id;
       } else {
-        this.logger.warn(`Tenant not found for subdomain: ${subdomain}`, 'UsersService');
+        this.logger.warn(
+          `Tenant not found for subdomain: ${subdomain}`,
+          'UsersService',
+        );
       }
     }
-    
+
     // Priorizar tenant do owner se encontrado
     if (ownerTenantId) {
       // Se subdomain foi fornecido e é diferente do tenant do owner, validar
@@ -170,20 +189,20 @@ export class UsersService {
 
     // Verificar se há duplicatas (múltiplos usuários com mesmo email)
     if (users && users.length > 1) {
-      this.logger.warn(
-        'Multiple users found with same email',
-        'UsersService',
-        {
-          email: supabaseUser.email,
-          count: users.length,
-          userIds: users.map((u) => u.id),
-        },
-      );
+      this.logger.warn('Multiple users found with same email', 'UsersService', {
+        email: supabaseUser.email,
+        count: users.length,
+        userIds: users.map((u) => u.id),
+      });
     }
 
     if (existingUser) {
       // VALIDAÇÃO CRÍTICA: Se usuário já tem tenant_id, não pode acessar outro tenant
-      if (existingUser.tenant_id && tenantId && existingUser.tenant_id !== tenantId) {
+      if (
+        existingUser.tenant_id &&
+        tenantId &&
+        existingUser.tenant_id !== tenantId
+      ) {
         this.logger.error(
           'User attempted to access different tenant',
           undefined,
@@ -205,7 +224,10 @@ export class UsersService {
       const updateData: Partial<User> = {
         email: supabaseUser.email,
         full_name: supabaseUser.user_metadata?.full_name || supabaseUser.name,
-        avatar_url: supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || supabaseUser.picture,
+        avatar_url:
+          supabaseUser.user_metadata?.avatar_url ||
+          supabaseUser.user_metadata?.picture ||
+          supabaseUser.picture,
         email_verified: supabaseUser.email_verified ?? false,
         updated_at: new Date().toISOString(),
       };
@@ -231,7 +253,7 @@ export class UsersService {
       if (tenantId && !existingUser.tenant_id) {
         updateData.tenant_id = tenantId;
         this.logger.log(
-          ownerTenantId 
+          ownerTenantId
             ? 'Owner automatically linked to tenant (no approval needed)'
             : 'User linked to tenant for first time',
           'UsersService',
@@ -263,14 +285,17 @@ export class UsersService {
       // Criar novo usuário
       // IMPORTANTE: Se é owner, já vincular ao tenant automaticamente (sem precisar de aprovação)
       const finalTenantId = tenantId || ownerTenantId;
-      
+
       const { data: newUser, error } = await this.supabase
         .from('users')
         .insert({
           auth0_id: supabaseUser.id, // Campo auth0_id armazena UUID do Supabase (compatibilidade com schema)
           email: supabaseUser.email,
           full_name: supabaseUser.user_metadata?.full_name || supabaseUser.name,
-          avatar_url: supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || supabaseUser.picture,
+          avatar_url:
+            supabaseUser.user_metadata?.avatar_url ||
+            supabaseUser.user_metadata?.picture ||
+            supabaseUser.picture,
           email_verified: supabaseUser.email_verified ?? false,
           role: 'user',
           tenant_id: finalTenantId, // Já vincula se for owner
@@ -287,7 +312,7 @@ export class UsersService {
 
       // Log de atividade
       await this.logActivity(newUser.id, 'user_created', 'user', newUser.id, {
-        description: ownerTenantId 
+        description: ownerTenantId
           ? `Owner ${supabaseUser.email} criado e vinculado automaticamente ao tenant`
           : `Usuário ${supabaseUser.email} criado no sistema`,
       });
@@ -336,16 +361,16 @@ export class UsersService {
     }
 
     const user = data as User;
-    
+
     // Cachear por email
     this.userCacheBySupabaseId.set(cacheKey, {
       user,
       expiresAt: Date.now() + this.CACHE_TTL,
     });
-    
+
     // Cachear também por ID
     this.cacheUser(user);
-    
+
     return user;
   }
 
@@ -467,9 +492,12 @@ export class UsersService {
    * @param dto - Dados do perfil
    * @returns User atualizado
    */
-  async completeProfile(supabaseId: string, dto: { given_name: string; family_name: string; avatar_url?: string }): Promise<User> {
+  async completeProfile(
+    supabaseId: string,
+    dto: { given_name: string; family_name: string; avatar_url?: string },
+  ): Promise<User> {
     const user = await this.getUserByAuth0Id(supabaseId);
-    
+
     if (!user) {
       throw new Error('Usuário não encontrado');
     }
@@ -489,10 +517,15 @@ export class UsersService {
       .single();
 
     if (error) {
-      this.logger.error('Failed to complete profile', error.message, 'UsersService', {
-        userId: user.id,
-        error: error.message,
-      });
+      this.logger.error(
+        'Failed to complete profile',
+        error.message,
+        'UsersService',
+        {
+          userId: user.id,
+          error: error.message,
+        },
+      );
       throw new Error(`Erro ao completar perfil: ${error.message}`);
     }
 
@@ -501,11 +534,12 @@ export class UsersService {
     try {
       const supabaseAdmin = this.supabaseService.getClient();
       // Buscar metadados atuais do usuário no Supabase Auth para preservar
-      const { data: { user: supabaseAuthUser } } = await supabaseAdmin.auth.admin.getUserById(supabaseId);
-      
-      const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
-        supabaseId,
-        {
+      const {
+        data: { user: supabaseAuthUser },
+      } = await supabaseAdmin.auth.admin.getUserById(supabaseId);
+
+      const { error: updateAuthError } =
+        await supabaseAdmin.auth.admin.updateUserById(supabaseId, {
           user_metadata: {
             ...(supabaseAuthUser?.user_metadata || {}), // Preservar metadados existentes
             full_name: fullName,
@@ -513,26 +547,37 @@ export class UsersService {
             family_name: dto.family_name.trim(),
             ...(dto.avatar_url && { avatar_url: dto.avatar_url }),
           },
-        }
-      );
+        });
 
       if (updateAuthError) {
-        this.logger.warn('Failed to update Supabase Auth user metadata', 'UsersService', {
-          userId: user.id,
-          error: updateAuthError.message,
-        });
+        this.logger.warn(
+          'Failed to update Supabase Auth user metadata',
+          'UsersService',
+          {
+            userId: user.id,
+            error: updateAuthError.message,
+          },
+        );
         // Não bloquear se falhar, mas logar o erro
       } else {
-        this.logger.log('Supabase Auth user metadata updated successfully', 'UsersService', {
-          userId: user.id,
-          fullName,
-        });
+        this.logger.log(
+          'Supabase Auth user metadata updated successfully',
+          'UsersService',
+          {
+            userId: user.id,
+            fullName,
+          },
+        );
       }
     } catch (updateError: any) {
-      this.logger.warn('Exception updating Supabase Auth user metadata', 'UsersService', {
-        userId: user.id,
-        error: updateError.message,
-      });
+      this.logger.warn(
+        'Exception updating Supabase Auth user metadata',
+        'UsersService',
+        {
+          userId: user.id,
+          error: updateError.message,
+        },
+      );
       // Não bloquear se falhar
     }
 
@@ -586,7 +631,7 @@ export class UsersService {
       .eq('user_id', userId)
       .eq('tenant_id', tenantId)
       .maybeSingle();
-    
+
     return !!data;
   }
 
@@ -613,18 +658,17 @@ export class UsersService {
 
     const hasTenant = !!user.tenant_id;
     const emailVerified = !!user.email_verified;
-    
+
     // Verificar perfil completo (nome e sobrenome)
     const hasCompletedProfile = !!(
-      user.full_name && 
-      user.full_name.trim().split(' ').length >= 2
+      user.full_name && user.full_name.trim().split(' ').length >= 2
     );
 
     // IMPORTANTE: Verificar se é owner ANTES de verificar outras coisas
     // Isso permite detectar owners mesmo sem tenant_id vinculado ainda
     let isOwnerStatus = false;
     let ownerTenantId: string | undefined;
-    
+
     if (user.tenant_id) {
       // Se tem tenant_id, verificar ownership normalmente
       isOwnerStatus = await this.isOwner(user.id, user.tenant_id);
@@ -637,7 +681,7 @@ export class UsersService {
         .eq('user_id', user.id)
         .limit(1)
         .maybeSingle();
-      
+
       if (ownership) {
         isOwnerStatus = true;
         ownerTenantId = ownership.tenant_id;
@@ -680,7 +724,12 @@ export class UsersService {
     }
 
     // Determinar status com prioridade
-    let status: 'active' | 'pending' | 'blocked' | 'incomplete_profile' | 'email_unverified' = 'pending';
+    let status:
+      | 'active'
+      | 'pending'
+      | 'blocked'
+      | 'incomplete_profile'
+      | 'email_unverified' = 'pending';
     let message: string | undefined;
 
     if (!emailVerified) {

@@ -18,7 +18,10 @@ import { UpdateAgentDto } from './dto/update-agent.dto';
 import { CreateAgentPermissionDto } from './dto/agent-permission.dto';
 import { CreateAgentRestrictionDto } from './dto/agent-restriction.dto';
 import { JwtAuthGuard } from '../auth/auth.guard';
-import { PermissionGuard, PERMISSION_CONTEXT_KEY } from '../permissions/guards/permission.guard';
+import {
+  PermissionGuard,
+  PERMISSION_CONTEXT_KEY,
+} from '../permissions/guards/permission.guard';
 import { RequirePermission } from '../permissions/decorators/require-permission.decorator';
 import { ExecutionResult } from './workflow-executor.service';
 import { PermissionContextResult } from '../permissions/permissions.service';
@@ -48,16 +51,23 @@ export class AgentsController {
   ) {
     const supabaseId = req.user.sub;
     // Usar contexto de permissões já calculado pelo guard
-    const permContext: PermissionContextResult | undefined = req[PERMISSION_CONTEXT_KEY];
-    return this.agentsService.findAll(supabaseId, tenantId, schoolId, {
-      category,
-      type,
-      is_template: is_template === 'true',
-      search,
-      status,
-      visibility,
-      myAgents: myAgents === 'true',
-    }, permContext);
+    const permContext: PermissionContextResult | undefined =
+      req[PERMISSION_CONTEXT_KEY];
+    return this.agentsService.findAll(
+      supabaseId,
+      tenantId,
+      schoolId,
+      {
+        category,
+        type,
+        is_template: is_template === 'true',
+        search,
+        status,
+        visibility,
+        myAgents: myAgents === 'true',
+      },
+      permContext,
+    );
   }
 
   /**
@@ -127,7 +137,8 @@ export class AgentsController {
   ) {
     const supabaseId = req.user.sub;
     // Usar contexto de permissões já calculado pelo guard
-    const permContext: PermissionContextResult | undefined = req[PERMISSION_CONTEXT_KEY];
+    const permContext: PermissionContextResult | undefined =
+      req[PERMISSION_CONTEXT_KEY];
     return this.agentsService.delete(id, supabaseId, tenantId, permContext);
   }
 
@@ -161,7 +172,8 @@ export class AgentsController {
   @UseGuards(PermissionGuard)
   @RequirePermission('agents', 'execute')
   async executeNode(
-    @Body() body: {
+    @Body()
+    body: {
       node: any;
       inputData: any;
       instructions?: string;
@@ -170,30 +182,31 @@ export class AgentsController {
     @Request() req: any,
   ) {
     const { node, inputData, instructions, options } = body;
-    
+
     // Verificar se é nó de IA (excluir nós de output)
     const nodeType = node.id?.split('-').slice(0, -1).join('-') || node.id;
     const category = node.category || node.data?.category;
 
-    const isOutputNode = 
+    const isOutputNode =
       nodeType.startsWith('generate-report') ||
       nodeType.startsWith('generate-pdf') ||
       nodeType.startsWith('send-') ||
       category === 'ENVIAR E GERAR' ||
       category === 'SAIDA';
-    
+
     const isAINode =
-      !isOutputNode && (
-        nodeType.startsWith('analyze-') ||
+      !isOutputNode &&
+      (nodeType.startsWith('analyze-') ||
         nodeType.startsWith('generate-summary') ||
         nodeType.startsWith('classify-') ||
         nodeType.startsWith('extract-') ||
         category === 'ANALISAR COM IA' ||
-        category === 'AGENTES'
-      );
+        category === 'AGENTES');
 
     if (!isAINode) {
-      throw new BadRequestException('Este endpoint é apenas para nós de IA. Nós de output devem ser processados no frontend.');
+      throw new BadRequestException(
+        'Este endpoint é apenas para nós de IA. Nós de output devem ser processados no frontend.',
+      );
     }
 
     // Executar nó de IA usando WorkflowExecutorService

@@ -129,11 +129,9 @@ export class OwnersService {
         // Atribuir role de sistema
         await this.assignOwnerRole(tenantId, user.id, systemRole.id);
       } else {
-        this.logger.warn(
-          'Owner role not found for tenant',
-          'OwnersService',
-          { tenantId },
-        );
+        this.logger.warn('Owner role not found for tenant', 'OwnersService', {
+          tenantId,
+        });
       }
     } else {
       // Atribuir role do tenant

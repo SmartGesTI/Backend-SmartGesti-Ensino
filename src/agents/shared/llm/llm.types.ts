@@ -1,6 +1,6 @@
 /**
  * Tipos e interfaces compartilhadas para LLM
- * 
+ *
  * Atualizado para GPT 5.2 com suporte completo a reasoning
  */
 
@@ -34,7 +34,7 @@ export interface LLMTool {
 
 /**
  * Níveis de esforço de reasoning suportados pelo GPT 5.2
- * 
+ *
  * - none: Sem reasoning (resposta direta)
  * - minimal: Reasoning mínimo (gpt-5-nano suporta apenas este)
  * - low: Reasoning baixo
@@ -42,7 +42,13 @@ export interface LLMTool {
  * - high: Reasoning alto (padrão para gpt-5-pro)
  * - xhigh: Reasoning extra alto (disponível após gpt-5.1-codex-max)
  */
-export type ReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
+export type ReasoningEffort =
+  | 'none'
+  | 'minimal'
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'xhigh';
 
 /**
  * Configuração de reasoning para requisições
@@ -61,7 +67,11 @@ export interface LLMRequest {
   max_tokens?: number;
   stream?: boolean;
   tools?: LLMTool[];
-  tool_choice?: 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
+  tool_choice?:
+    | 'auto'
+    | 'none'
+    | 'required'
+    | { type: 'function'; function: { name: string } };
   response_format?: {
     type: 'text' | 'json_object' | 'json_schema';
     json_schema?: {
@@ -104,12 +114,12 @@ export interface LLMResponse {
   reasoning?: ReasoningItem[];
 }
 
-export type StreamingEventType = 
-  | 'token' 
-  | 'tool_call' 
+export type StreamingEventType =
+  | 'token'
+  | 'tool_call'
   | 'tool_call_delta'
-  | 'tool_result' 
-  | 'done' 
+  | 'tool_result'
+  | 'done'
   | 'error'
   | 'usage'
   | 'thinking'; // Pensamentos/reasoning do modelo (GPT-5)

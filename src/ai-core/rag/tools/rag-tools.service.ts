@@ -29,11 +29,18 @@ export class RagToolsService {
     tenantId?: string,
     schoolId?: string,
   ): Promise<ToolExecutionResult> {
-    this.logger.log(`Executing tool: ${toolName} with args: ${JSON.stringify(args)}, tenant: ${tenantId}, school: ${schoolId}`);
+    this.logger.log(
+      `Executing tool: ${toolName} with args: ${JSON.stringify(args)}, tenant: ${tenantId}, school: ${schoolId}`,
+    );
 
     switch (toolName) {
       case 'list_public_agents':
-        return this.listPublicAgents(args.category, args.limit, tenantId, schoolId);
+        return this.listPublicAgents(
+          args.category,
+          args.limit,
+          tenantId,
+          schoolId,
+        );
       case 'get_agent_details':
         return this.getAgentDetails(args.agentName, tenantId, schoolId);
       default:
@@ -54,8 +61,10 @@ export class RagToolsService {
     schoolId?: string,
   ): Promise<ToolExecutionResult> {
     try {
-      this.logger.log(`listPublicAgents called with tenantId: ${tenantId}, schoolId: ${schoolId}, category: ${category}`);
-      
+      this.logger.log(
+        `listPublicAgents called with tenantId: ${tenantId}, schoolId: ${schoolId}, category: ${category}`,
+      );
+
       if (!tenantId) {
         return {
           success: false,
@@ -66,7 +75,8 @@ export class RagToolsService {
       if (!schoolId) {
         return {
           success: false,
-          error: 'Escola não identificada. Os agentes são criados dentro de escolas específicas.',
+          error:
+            'Escola não identificada. Os agentes são criados dentro de escolas específicas.',
         };
       }
 
@@ -76,7 +86,8 @@ export class RagToolsService {
       // visibility: 'public' ou 'collaborative' (não mostrar 'private')
       let query = client
         .from('agents')
-        .select(`
+        .select(
+          `
           id,
           name,
           description,
@@ -92,7 +103,8 @@ export class RagToolsService {
           visibility,
           flow,
           workflow
-        `)
+        `,
+        )
         .eq('tenant_id', tenantId) // SEMPRE filtrar por tenant
         .eq('is_active', true)
         .neq('visibility', 'private') // Não mostrar privados
@@ -108,7 +120,7 @@ export class RagToolsService {
       }
 
       const { data, error } = await query;
-      
+
       this.logger.log(`Query returned ${data?.length || 0} agents`);
 
       if (error) {
@@ -153,9 +165,10 @@ export class RagToolsService {
         data: {
           agents,
           total: agents.length,
-          message: agents.length > 0
-            ? `Encontrados ${agents.length} agentes disponíveis (públicos e colaborativos) na escola`
-            : 'Nenhum agente disponível encontrado nesta escola',
+          message:
+            agents.length > 0
+              ? `Encontrados ${agents.length} agentes disponíveis (públicos e colaborativos) na escola`
+              : 'Nenhum agente disponível encontrado nesta escola',
         },
       };
     } catch (error) {
@@ -173,8 +186,10 @@ export class RagToolsService {
     schoolId?: string,
   ): Promise<ToolExecutionResult> {
     try {
-      this.logger.log(`getAgentDetails called for: ${agentName}, tenantId: ${tenantId}, schoolId: ${schoolId}`);
-      
+      this.logger.log(
+        `getAgentDetails called for: ${agentName}, tenantId: ${tenantId}, schoolId: ${schoolId}`,
+      );
+
       if (!tenantId) {
         return {
           success: false,
@@ -185,7 +200,8 @@ export class RagToolsService {
       if (!schoolId) {
         return {
           success: false,
-          error: 'Escola não identificada. Os agentes são criados dentro de escolas específicas.',
+          error:
+            'Escola não identificada. Os agentes são criados dentro de escolas específicas.',
         };
       }
 
@@ -194,7 +210,8 @@ export class RagToolsService {
       // Construir query base
       let query = client
         .from('agents')
-        .select(`
+        .select(
+          `
           id,
           name,
           description,
@@ -211,7 +228,8 @@ export class RagToolsService {
           workflow,
           category_tags,
           visibility
-        `)
+        `,
+        )
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
         .neq('visibility', 'private')
@@ -233,7 +251,7 @@ export class RagToolsService {
       // Extrair descrição detalhada do fluxo
       let flowDescription = data.flow || '';
       let flowSteps: string[] = [];
-      
+
       if (data.workflow?.nodes && Array.isArray(data.workflow.nodes)) {
         flowSteps = data.workflow.nodes.map((n: any, idx: number) => {
           const label = n.data?.label || n.type || 'Nó';

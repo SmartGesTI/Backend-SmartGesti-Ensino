@@ -20,7 +20,9 @@ export class SupabaseJwtGuard implements CanActivate {
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing or invalid authorization header');
+      throw new UnauthorizedException(
+        'Missing or invalid authorization header',
+      );
     }
 
     const token = authHeader.substring(7);
@@ -36,7 +38,10 @@ export class SupabaseJwtGuard implements CanActivate {
       // Se for ES256 (ECC), validar via Supabase Client
       if (header.alg === 'ES256') {
         const supabase = this.supabaseService.getClient();
-        const { data: { user }, error } = await supabase.auth.getUser(token);
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser(token);
 
         if (error || !user) {
           throw new UnauthorizedException('Invalid ES256 token');
@@ -49,10 +54,14 @@ export class SupabaseJwtGuard implements CanActivate {
       }
       // Se for HS256 (legacy), validar com JWT Secret
       else if (header.alg === 'HS256') {
-        const supabaseJwtSecret = this.configService.get<string>('SUPABASE_JWT_SECRET');
-        
+        const supabaseJwtSecret = this.configService.get<string>(
+          'SUPABASE_JWT_SECRET',
+        );
+
         if (!supabaseJwtSecret) {
-          throw new UnauthorizedException('HS256 token requires SUPABASE_JWT_SECRET');
+          throw new UnauthorizedException(
+            'HS256 token requires SUPABASE_JWT_SECRET',
+          );
         }
 
         payload = jwt.verify(token, supabaseJwtSecret, {
@@ -71,9 +80,15 @@ export class SupabaseJwtGuard implements CanActivate {
       request.user = {
         sub: payload.sub,
         email: payload.email || '',
-        name: payload.user_metadata?.full_name || payload.user_metadata?.name || '',
-        picture: payload.user_metadata?.avatar_url || payload.user_metadata?.picture || '',
-        email_verified: payload.email_confirmed_at !== null && payload.email_confirmed_at !== undefined,
+        name:
+          payload.user_metadata?.full_name || payload.user_metadata?.name || '',
+        picture:
+          payload.user_metadata?.avatar_url ||
+          payload.user_metadata?.picture ||
+          '',
+        email_verified:
+          payload.email_confirmed_at !== null &&
+          payload.email_confirmed_at !== undefined,
       };
 
       return true;
@@ -81,7 +96,9 @@ export class SupabaseJwtGuard implements CanActivate {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new UnauthorizedException(`Token validation failed: ${error.message}`);
+      throw new UnauthorizedException(
+        `Token validation failed: ${error.message}`,
+      );
     }
   }
 }

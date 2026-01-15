@@ -47,7 +47,8 @@ export class KnowledgeRetrievalService {
       );
 
       // 1. Gerar embedding da query
-      const { embedding } = await this.embeddingService.generateEmbedding(query);
+      const { embedding } =
+        await this.embeddingService.generateEmbedding(query);
       const vectorStr = this.embeddingService.embeddingToVector(embedding);
 
       // 2. Chamar função RPC do Supabase
@@ -60,7 +61,10 @@ export class KnowledgeRetrievalService {
       });
 
       if (error) {
-        this.logger.error(`Erro na RPC match_rag_chunks: ${error.message}`, error);
+        this.logger.error(
+          `Erro na RPC match_rag_chunks: ${error.message}`,
+          error,
+        );
         throw error;
       }
 
@@ -73,7 +77,7 @@ export class KnowledgeRetrievalService {
         if (category && row.doc_category !== category) return false;
         if (tags && tags.length > 0) {
           const docTags = row.doc_tags || [];
-          if (!tags.some(tag => docTags.includes(tag))) return false;
+          if (!tags.some((tag) => docTags.includes(tag))) return false;
         }
         // TODO: Adicionar filtro por tenantId quando suportado no banco
         return true;
@@ -125,14 +129,17 @@ export class KnowledgeRetrievalService {
       );
 
       // 1. Gerar embedding da query
-      const { embedding } = await this.embeddingService.generateEmbedding(query);
+      const { embedding } =
+        await this.embeddingService.generateEmbedding(query);
       const vectorStr = this.embeddingService.embeddingToVector(embedding);
 
       // 2. Chamar função RPC de busca híbrida do Supabase
       const client = this.supabase.getClient();
-      
-      this.logger.debug(`Chamando hybrid_rag_search com: query_text="${query.substring(0, 30)}...", match_count=${topK}, category=${category || 'null'}`);
-      
+
+      this.logger.debug(
+        `Chamando hybrid_rag_search com: query_text="${query.substring(0, 30)}...", match_count=${topK}, category=${category || 'null'}`,
+      );
+
       const { data: results, error } = await client.rpc('hybrid_rag_search', {
         query_text: query,
         query_embedding: vectorStr,
@@ -141,17 +148,28 @@ export class KnowledgeRetrievalService {
       });
 
       if (error) {
-        this.logger.error(`Erro na RPC hybrid_rag_search: ${error.message}`, error);
+        this.logger.error(
+          `Erro na RPC hybrid_rag_search: ${error.message}`,
+          error,
+        );
         throw error;
       }
-      
+
       this.logger.log(
         `Busca híbrida retornou ${results?.length || 0} resultados`,
       );
-      
+
       // Log detalhado dos resultados para debug
       if (results && results.length > 0) {
-        this.logger.debug(`Primeiros resultados: ${results.slice(0, 3).map((r: any) => `"${r.doc_title}" (${(r.similarity * 100).toFixed(1)}%)`).join(', ')}`);
+        this.logger.debug(
+          `Primeiros resultados: ${results
+            .slice(0, 3)
+            .map(
+              (r: any) =>
+                `"${r.doc_title}" (${(r.similarity * 100).toFixed(1)}%)`,
+            )
+            .join(', ')}`,
+        );
       } else {
         this.logger.warn(`Nenhum resultado encontrado para: "${query}"`);
       }
@@ -161,7 +179,7 @@ export class KnowledgeRetrievalService {
         if (category && row.doc_category !== category) return false;
         if (tags && tags.length > 0) {
           const docTags = row.doc_tags || [];
-          if (!tags.some(tag => docTags.includes(tag))) return false;
+          if (!tags.some((tag) => docTags.includes(tag))) return false;
         }
         // TODO: Adicionar filtro por tenantId quando suportado no banco
         return true;
@@ -185,10 +203,7 @@ export class KnowledgeRetrievalService {
         metadata: row.metadata || {},
       }));
     } catch (error: any) {
-      this.logger.error(
-        `Erro na busca híbrida: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Erro na busca híbrida: ${error.message}`, error.stack);
       // Fallback para busca semântica pura se híbrida falhar
       this.logger.warn('Fallback para busca semântica');
       return this.semanticSearch(query, options);
@@ -214,10 +229,7 @@ export class KnowledgeRetrievalService {
     }
 
     const formatted = results.map((r, i) => {
-      const parts = [
-        `[Resultado ${i + 1}]`,
-        `Documento: ${r.document.title}`,
-      ];
+      const parts = [`[Resultado ${i + 1}]`, `Documento: ${r.document.title}`];
 
       if (r.document.menuPath) {
         parts.push(`Menu: ${r.document.menuPath}`);

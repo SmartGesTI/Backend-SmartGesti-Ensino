@@ -30,7 +30,9 @@ export interface EducaIACallOptions {
   sendReasoning?: boolean;
 }
 
-export type EducaIAUIMessage = InferAgentUIMessage<typeof EducaIAAgent.prototype.agent>;
+export type EducaIAUIMessage = InferAgentUIMessage<
+  typeof EducaIAAgent.prototype.agent
+>;
 
 /**
  * Models that support reasoning/thinking

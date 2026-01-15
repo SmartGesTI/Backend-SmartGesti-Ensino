@@ -50,7 +50,13 @@ import { WorkflowExecutorService } from '../workflows/workflow-executor.service'
 
 @Global()
 @Module({
-  imports: [ConfigModule, SupabaseModule, LoggerModule, SharedModule, RagModule],
+  imports: [
+    ConfigModule,
+    SupabaseModule,
+    LoggerModule,
+    SharedModule,
+    RagModule,
+  ],
   providers: [
     // Config
     AiCoreConfigService,

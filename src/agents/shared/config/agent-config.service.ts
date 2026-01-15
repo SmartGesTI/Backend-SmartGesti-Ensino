@@ -6,15 +6,15 @@ import { LoggerService } from '../../../common/logger/logger.service';
  * ============================================
  * CONFIGURAÇÃO DO MODELO PADRÃO DO ASSISTENTE
  * ============================================
- * 
+ *
  * Para alterar o modelo padrão do Assistente IA, modifique a constante abaixo.
- * 
+ *
  * Modelos disponíveis (conforme definidos no frontend em openaiModels.ts):
  * - gpt-5-nano (recomendado - rápido, econômico, com raciocínio básico)
  * - gpt-5.2 (mais poderoso, mais caro, raciocínio profundo)
  * - gpt-5-mini (equilibrado, raciocínio médio)
  * - gpt-4.1-nano (legado - mais rápido, sem raciocínio)
- * 
+ *
  * IMPORTANTE:
  * - Esta constante é específica para o Assistente IA
  * - A variável de ambiente OPENAI_DEFAULT_MODEL é usada como fallback geral
@@ -38,27 +38,34 @@ export class AgentConfigService {
     private readonly logger: LoggerService,
   ) {
     this.openaiApiKey = this.configService.get<string>('OPENAI_API_KEY') || '';
-    
+
     // Prioridade para o Assistente:
     // 1. OPENAI_ASSISTANT_MODEL (específico do assistente, se definido)
     // 2. ASSISTANT_DEFAULT_MODEL (constante gpt-5.2-nano)
     // 3. OPENAI_DEFAULT_MODEL (fallback geral, geralmente gpt-4.1-nano)
     // 4. GENERAL_FALLBACK_MODEL (último recurso)
-    const assistantSpecificModel = this.configService.get<string>('OPENAI_ASSISTANT_MODEL');
-    const generalEnvModel = this.configService.get<string>('OPENAI_DEFAULT_MODEL');
-    
+    const assistantSpecificModel = this.configService.get<string>(
+      'OPENAI_ASSISTANT_MODEL',
+    );
+    const generalEnvModel = this.configService.get<string>(
+      'OPENAI_DEFAULT_MODEL',
+    );
+
     if (assistantSpecificModel) {
       this.defaultModel = assistantSpecificModel;
     } else {
       // Usar o modelo padrão do assistente (gpt-5.2-nano), não o fallback geral
       this.defaultModel = ASSISTANT_DEFAULT_MODEL;
     }
-    
+
     this.maxRetries = this.configService.get<number>('LLM_MAX_RETRIES') || 3;
     this.timeout = this.configService.get<number>('LLM_TIMEOUT') || 60000; // 60 segundos
 
     if (!this.openaiApiKey) {
-      this.logger.warn('OPENAI_API_KEY não configurada. Execuções de LLM falharão.', 'AgentConfigService');
+      this.logger.warn(
+        'OPENAI_API_KEY não configurada. Execuções de LLM falharão.',
+        'AgentConfigService',
+      );
     } else {
       let source: string;
       if (assistantSpecificModel) {
@@ -69,12 +76,26 @@ export class AgentConfigService {
           source += ` [NOTA: OPENAI_DEFAULT_MODEL=${generalEnvModel} existe mas não é usada pelo Assistente]`;
         }
       }
-      this.logger.log(`[AgentConfigService] Modelo Assistente IA: ${this.defaultModel} (fonte: ${source})`, 'AgentConfigService');
-      
+      this.logger.log(
+        `[AgentConfigService] Modelo Assistente IA: ${this.defaultModel} (fonte: ${source})`,
+        'AgentConfigService',
+      );
+
       // Validar se o modelo existe na lista de modelos disponíveis
-      const validModels = ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-5.2', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano'];
+      const validModels = [
+        'gpt-4.1',
+        'gpt-4.1-mini',
+        'gpt-4.1-nano',
+        'gpt-5.2',
+        'gpt-5',
+        'gpt-5-mini',
+        'gpt-5-nano',
+      ];
       if (!validModels.includes(this.defaultModel)) {
-        this.logger.warn(`[AgentConfigService] ATENÇÃO: Modelo ${this.defaultModel} pode não estar disponível na API OpenAI. Modelos válidos: ${validModels.join(', ')}`, 'AgentConfigService');
+        this.logger.warn(
+          `[AgentConfigService] ATENÇÃO: Modelo ${this.defaultModel} pode não estar disponível na API OpenAI. Modelos válidos: ${validModels.join(', ')}`,
+          'AgentConfigService',
+        );
       }
     }
   }
@@ -105,13 +126,16 @@ export class AgentConfigService {
     temperature: number;
   } {
     const modelToUse = model || this.defaultModel;
-    
+
     // Configurações por modelo (maxTokens = completion tokens limit)
     // GPT-4.1: max output tokens = 32,768
     // GPT-5.2: max output tokens = 128,000 (assumindo similar ao GPT-5.1)
     // GPT-5: max output tokens = 128,000
     // GPT-5-mini/nano: usando valores conservadores
-    const modelConfigs: Record<string, { maxTokens: number; temperature: number }> = {
+    const modelConfigs: Record<
+      string,
+      { maxTokens: number; temperature: number }
+    > = {
       'gpt-4.1': { maxTokens: 32768, temperature: 0.7 },
       'gpt-4.1-mini': { maxTokens: 32768, temperature: 0.7 },
       'gpt-4.1-nano': { maxTokens: 32768, temperature: 0.7 },

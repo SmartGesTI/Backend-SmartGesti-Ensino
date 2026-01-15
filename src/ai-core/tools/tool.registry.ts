@@ -16,11 +16,16 @@ export class ToolRegistry {
    */
   register(definition: ToolDefinition): void {
     if (this.tools.has(definition.name)) {
-      this.logger.warn(`Tool ${definition.name} already registered, overwriting`);
+      this.logger.warn(
+        `Tool ${definition.name} already registered, overwriting`,
+      );
     }
 
     this.tools.set(definition.name, definition);
-    this.toolInstances.set(definition.name, this.toolFactory.createTool(definition));
+    this.toolInstances.set(
+      definition.name,
+      this.toolFactory.createTool(definition),
+    );
     this.logger.debug(`Registered tool: ${definition.name}`);
   }
 

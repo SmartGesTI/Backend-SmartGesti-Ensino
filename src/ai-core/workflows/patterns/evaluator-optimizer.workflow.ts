@@ -1,4 +1,8 @@
-import { WorkflowConfig, WorkflowContext, WorkflowResult } from '../workflow.types';
+import {
+  WorkflowConfig,
+  WorkflowContext,
+  WorkflowResult,
+} from '../workflow.types';
 
 export class EvaluatorOptimizerWorkflow {
   async execute(
@@ -11,7 +15,9 @@ export class EvaluatorOptimizerWorkflow {
     // Primeiro step deve ser o gerador
     const generatorStep = config.steps[0];
     if (!generatorStep) {
-      throw new Error('Evaluator-optimizer workflow requires at least one step');
+      throw new Error(
+        'Evaluator-optimizer workflow requires at least one step',
+      );
     }
 
     const maxIterations = 5; // Limite de iterações
@@ -25,7 +31,11 @@ export class EvaluatorOptimizerWorkflow {
 
         // Gerar/otimizar
         if (generatorStep.agent) {
-          currentResult = { agent: generatorStep.agent, input: generatorStep.input, iteration };
+          currentResult = {
+            agent: generatorStep.agent,
+            input: generatorStep.input,
+            iteration,
+          };
         } else {
           throw new Error('Generator step must have an agent');
         }

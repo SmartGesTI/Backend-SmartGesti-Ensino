@@ -21,30 +21,31 @@ export class LoggerService implements NestLoggerService {
         winston.format.errors({ stack: true }),
         winston.format.splat(),
         winston.format.json(),
-        winston.format.printf(({ timestamp, level, message, context, trace, ...meta }) => {
-          const contextStr = context ? `[${context}]` : '';
-          const traceStr = trace ? `\n${trace}` : '';
-          const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
-          return `${timestamp} ${level.toUpperCase()} ${contextStr} ${message}${metaStr}${traceStr}`;
-        }),
+        winston.format.printf(
+          ({ timestamp, level, message, context, trace, ...meta }) => {
+            const contextStr = context ? `[${context}]` : '';
+            const traceStr = trace ? `\n${trace}` : '';
+            const metaStr = Object.keys(meta).length
+              ? ` ${JSON.stringify(meta)}`
+              : '';
+            return `${timestamp} ${level.toUpperCase()} ${contextStr} ${message}${metaStr}${traceStr}`;
+          },
+        ),
       ),
       transports: [
         new winston.transports.Console({
           format: winston.format.combine(
             winston.format.colorize(),
-            winston.format.printf(({ timestamp, level, message, context, ...meta }) => {
-              const contextStr = context ? `[${context}]` : '';
-              const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
-              return `${timestamp} ${level} ${contextStr} ${message}${metaStr}`;
-            }),
+            winston.format.printf(
+              ({ timestamp, level, message, context, ...meta }) => {
+                const contextStr = context ? `[${context}]` : '';
+                const metaStr = Object.keys(meta).length
+                  ? ` ${JSON.stringify(meta)}`
+                  : '';
+                return `${timestamp} ${level} ${contextStr} ${message}${metaStr}`;
+              },
+            ),
           ),
-        }),
-        new winston.transports.File({
-          filename: 'logs/error.log',
-          level: 'error',
-        }),
-        new winston.transports.File({
-          filename: 'logs/combined.log',
         }),
       ],
     });
@@ -54,7 +55,12 @@ export class LoggerService implements NestLoggerService {
     this.winstonLogger.info(message, { context, ...meta });
   }
 
-  error(message: string, trace?: string, context?: string, meta?: Record<string, any>) {
+  error(
+    message: string,
+    trace?: string,
+    context?: string,
+    meta?: Record<string, any>,
+  ) {
     this.winstonLogger.error(message, { context, trace, ...meta });
   }
 

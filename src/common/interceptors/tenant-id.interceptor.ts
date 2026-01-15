@@ -33,10 +33,10 @@ export class TenantIdInterceptor implements NestInterceptor {
     if (tenantIdOrSubdomain) {
       // Usar cache para converter subdomain -> UUID
       const tenantId = await this.tenantCache.getTenantId(tenantIdOrSubdomain);
-      
+
       if (!tenantId) {
         throw new BadRequestException(
-          `Tenant não encontrado: ${tenantIdOrSubdomain}`
+          `Tenant não encontrado: ${tenantIdOrSubdomain}`,
         );
       }
 
@@ -44,7 +44,10 @@ export class TenantIdInterceptor implements NestInterceptor {
       request.headers['x-tenant-id'] = tenantId;
     }
 
-    console.log('[TenantIdInterceptor] Header final x-tenant-id:', request.headers['x-tenant-id']);
+    console.log(
+      '[TenantIdInterceptor] Header final x-tenant-id:',
+      request.headers['x-tenant-id'],
+    );
 
     return next.handle();
   }

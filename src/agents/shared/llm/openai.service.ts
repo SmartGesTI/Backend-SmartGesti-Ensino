@@ -14,15 +14,27 @@ import {
 /**
  * Mapeamento de modelos para níveis de reasoning suportados
  */
-const MODEL_REASONING_SUPPORT: Record<string, {
-  supported: ReasoningEffort[];
-  default: ReasoningEffort;
-}> = {
+const MODEL_REASONING_SUPPORT: Record<
+  string,
+  {
+    supported: ReasoningEffort[];
+    default: ReasoningEffort;
+  }
+> = {
   'gpt-5-nano': { supported: ['minimal'], default: 'minimal' },
-  'gpt-5-mini': { supported: ['none', 'minimal', 'low', 'medium'], default: 'low' },
-  'gpt-5': { supported: ['none', 'minimal', 'low', 'medium', 'high'], default: 'medium' },
+  'gpt-5-mini': {
+    supported: ['none', 'minimal', 'low', 'medium'],
+    default: 'low',
+  },
+  'gpt-5': {
+    supported: ['none', 'minimal', 'low', 'medium', 'high'],
+    default: 'medium',
+  },
   'gpt-5.1': { supported: ['none', 'low', 'medium', 'high'], default: 'none' },
-  'gpt-5.2': { supported: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'], default: 'medium' },
+  'gpt-5.2': {
+    supported: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'],
+    default: 'medium',
+  },
   'gpt-5-pro': { supported: ['high'], default: 'high' },
 };
 
@@ -46,7 +58,7 @@ export class OpenAIService {
 
     const modelToUse = request.model || this.configService.getDefaultModel();
     const modelInfo = this.modelConfig.getModelInfo(modelToUse);
-    
+
     if (!modelInfo) {
       throw new Error(`Modelo ${modelToUse} não encontrado ou não suportado`);
     }
@@ -58,7 +70,7 @@ export class OpenAIService {
       // GPT-5 models require max_completion_tokens instead of max_tokens
       // GPT-5 models also don't support custom temperature (only default value 1)
       const isGPT5Model = modelToUse.startsWith('gpt-5');
-      
+
       const body: any = {
         model: modelToUse,
         messages: this.formatMessages(request.messages),
@@ -72,14 +84,18 @@ export class OpenAIService {
 
       // Usar max_completion_tokens para GPT-5, max_tokens para outros modelos
       if (isGPT5Model) {
-        body.max_completion_tokens = request.max_tokens ?? modelConfig.maxTokens;
-        
+        body.max_completion_tokens =
+          request.max_tokens ?? modelConfig.maxTokens;
+
         // Configurar reasoning_effort baseado no modelo e preferência do usuário
-        const reasoningEffort = this.getReasoningEffort(modelToUse, request.reasoning_effort);
+        const reasoningEffort = this.getReasoningEffort(
+          modelToUse,
+          request.reasoning_effort,
+        );
         if (reasoningEffort) {
           body.reasoning_effort = reasoningEffort;
         }
-        
+
         // Suporte a multi-turn com reasoning (GPT 5.2)
         if (request.previous_response_id) {
           body.previous_response_id = request.previous_response_id;
@@ -108,8 +124,12 @@ export class OpenAIService {
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
-        throw new Error(`OpenAI API error: ${error.error?.message || error.message || response.statusText}`);
+        const error = await response
+          .json()
+          .catch(() => ({ message: 'Erro desconhecido' }));
+        throw new Error(
+          `OpenAI API error: ${error.error?.message || error.message || response.statusText}`,
+        );
       }
 
       const data = await response.json();
@@ -135,7 +155,10 @@ export class OpenAIService {
         reasoning: data.reasoning, // Itens de reasoning se disponíveis
       };
     } catch (error: any) {
-      this.logger.error(`Erro ao chamar OpenAI API: ${error.message}`, 'OpenAIService');
+      this.logger.error(
+        `Erro ao chamar OpenAI API: ${error.message}`,
+        'OpenAIService',
+      );
       throw error;
     }
   }
@@ -152,10 +175,12 @@ export class OpenAIService {
 
     const modelToUse = request.model || this.configService.getDefaultModel();
     const modelInfo = this.modelConfig.getModelInfo(modelToUse);
-    
+
     if (!modelInfo) {
       return new Observable((observer) => {
-        observer.error(new Error(`Modelo ${modelToUse} não encontrado ou não suportado`));
+        observer.error(
+          new Error(`Modelo ${modelToUse} não encontrado ou não suportado`),
+        );
       });
     }
 
@@ -170,7 +195,13 @@ export class OpenAIService {
     const subject = new Subject<StreamingEvent>();
 
     // Executar streaming de forma assíncrona
-    this.executeStreaming(request, apiKey, modelToUse, modelConfig, subject).catch((error) => {
+    this.executeStreaming(
+      request,
+      apiKey,
+      modelToUse,
+      modelConfig,
+      subject,
+    ).catch((error) => {
       subject.error(error);
     });
 
@@ -188,7 +219,7 @@ export class OpenAIService {
       // GPT-5 models require max_completion_tokens instead of max_tokens
       // GPT-5 models also don't support custom temperature (only default value 1)
       const isGPT5Model = model.startsWith('gpt-5');
-      
+
       const body: any = {
         model,
         messages: this.formatMessages(request.messages),
@@ -203,14 +234,18 @@ export class OpenAIService {
 
       // Usar max_completion_tokens para GPT-5, max_tokens para outros modelos
       if (isGPT5Model) {
-        body.max_completion_tokens = request.max_tokens ?? modelConfig.maxTokens;
-        
+        body.max_completion_tokens =
+          request.max_tokens ?? modelConfig.maxTokens;
+
         // Configurar reasoning_effort baseado no modelo e preferência do usuário
-        const reasoningEffort = this.getReasoningEffort(model, request.reasoning_effort);
+        const reasoningEffort = this.getReasoningEffort(
+          model,
+          request.reasoning_effort,
+        );
         if (reasoningEffort) {
           body.reasoning_effort = reasoningEffort;
         }
-        
+
         // Suporte a multi-turn com reasoning (GPT 5.2)
         if (request.previous_response_id) {
           body.previous_response_id = request.previous_response_id;
@@ -240,12 +275,19 @@ export class OpenAIService {
           toolCallId: msg.tool_call_id || null,
         }));
       }
-      console.log('[OpenAIService] Enviando requisição para OpenAI (streaming):', JSON.stringify({
-        ...bodyForLog,
-        toolsCount: body.tools?.length || 0,
-        hasToolChoice: !!body.tool_choice,
-        toolChoice: body.tool_choice,
-      }, null, 2));
+      console.log(
+        '[OpenAIService] Enviando requisição para OpenAI (streaming):',
+        JSON.stringify(
+          {
+            ...bodyForLog,
+            toolsCount: body.tools?.length || 0,
+            hasToolChoice: !!body.tool_choice,
+            toolChoice: body.tool_choice,
+          },
+          null,
+          2,
+        ),
+      );
 
       const response = await fetch(this.apiUrl, {
         method: 'POST',
@@ -257,12 +299,20 @@ export class OpenAIService {
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
+        const error = await response
+          .json()
+          .catch(() => ({ message: 'Erro desconhecido' }));
         console.error('[OpenAIService] Erro na resposta (streaming):', error);
-        throw new Error(`OpenAI API error: ${error.error?.message || error.message || response.statusText}`);
+        throw new Error(
+          `OpenAI API error: ${error.error?.message || error.message || response.statusText}`,
+        );
       }
-      
-      console.log('[OpenAIService] Resposta recebida (streaming), status:', response.status, response.statusText);
+
+      console.log(
+        '[OpenAIService] Resposta recebida (streaming), status:',
+        response.status,
+        response.statusText,
+      );
 
       if (!response.body) {
         throw new Error('Response body is null');
@@ -277,7 +327,7 @@ export class OpenAIService {
 
       while (true) {
         const { done, value } = await reader.read();
-        
+
         if (done) {
           // Emitir evento de conclusão
           if (usage) {
@@ -311,7 +361,7 @@ export class OpenAIService {
             try {
               const parsed = JSON.parse(data);
               const choice = parsed.choices?.[0];
-              
+
               if (!choice) continue;
 
               // Processar delta de conteúdo (resposta final)
@@ -325,7 +375,7 @@ export class OpenAIService {
                   timestamp: Date.now(),
                 });
               }
-              
+
               // Processar pensamentos/reasoning (GPT-5 models)
               // O reasoning pode vir em diferentes formatos:
               // 1. choice.delta.reasoning (streaming incremental)
@@ -361,13 +411,22 @@ export class OpenAIService {
                   },
                   timestamp: Date.now(),
                 });
-              } else if (choice.delta && Object.keys(choice.delta).length > 0 && !choice.delta.tool_calls) {
+              } else if (
+                choice.delta &&
+                Object.keys(choice.delta).length > 0 &&
+                !choice.delta.tool_calls
+              ) {
                 // Log para debug: ver o que está vindo no delta se não for content nem tool_calls
                 // Mas não logar se for apenas role ou outros campos comuns
                 const ignoredFields = ['role', 'refusal'];
-                const hasOtherFields = Object.keys(choice.delta).some(key => !ignoredFields.includes(key));
+                const hasOtherFields = Object.keys(choice.delta).some(
+                  (key) => !ignoredFields.includes(key),
+                );
                 if (hasOtherFields) {
-                  console.log('[OpenAIService] Delta recebido sem content:', JSON.stringify(choice.delta));
+                  console.log(
+                    '[OpenAIService] Delta recebido sem content:',
+                    JSON.stringify(choice.delta),
+                  );
                 }
               }
 
@@ -375,7 +434,7 @@ export class OpenAIService {
               if (choice.delta?.tool_calls) {
                 for (const toolCallDelta of choice.delta.tool_calls) {
                   const index = toolCallDelta.index ?? 0;
-                  
+
                   // Buscar ou criar tool call para este índice
                   if (!toolCallsMap.has(index) && toolCallDelta.id) {
                     // Novo tool call - criar novo objeto
@@ -395,7 +454,8 @@ export class OpenAIService {
                       toolCall.function.name += toolCallDelta.function.name;
                     }
                     if (toolCallDelta.function?.arguments) {
-                      toolCall.function.arguments += toolCallDelta.function.arguments;
+                      toolCall.function.arguments +=
+                        toolCallDelta.function.arguments;
                     }
                   }
                 }
@@ -421,7 +481,9 @@ export class OpenAIService {
 
               // Capturar finish_reason para debug
               if (choice.finish_reason) {
-                console.log(`[OpenAIService] Finish reason: ${choice.finish_reason}`);
+                console.log(
+                  `[OpenAIService] Finish reason: ${choice.finish_reason}`,
+                );
               }
 
               // Capturar usage
@@ -430,20 +492,26 @@ export class OpenAIService {
               }
             } catch (error) {
               // Ignorar erros de parsing de linhas individuais
-              this.logger.warn(`Erro ao processar chunk: ${error}`, 'OpenAIService');
+              this.logger.warn(
+                `Erro ao processar chunk: ${error}`,
+                'OpenAIService',
+              );
             }
           }
         }
       }
     } catch (error: any) {
-      this.logger.error(`Erro no streaming OpenAI: ${error.message}`, 'OpenAIService');
+      this.logger.error(
+        `Erro no streaming OpenAI: ${error.message}`,
+        'OpenAIService',
+      );
       subject.error(error);
     }
   }
 
   /**
    * Obtém o nível de reasoning apropriado para o modelo
-   * 
+   *
    * @param model - Nome do modelo
    * @param requested - Nível solicitado (opcional)
    * @returns Nível de reasoning a ser usado ou undefined se não aplicável
@@ -453,7 +521,7 @@ export class OpenAIService {
     requested?: ReasoningEffort,
   ): ReasoningEffort | undefined {
     const modelSupport = MODEL_REASONING_SUPPORT[model];
-    
+
     if (!modelSupport) {
       // Modelo não tem configuração de reasoning conhecida
       // Para modelos GPT-5 genéricos, usar 'medium' como padrão
@@ -462,7 +530,7 @@ export class OpenAIService {
       }
       return undefined;
     }
-    
+
     // Se foi solicitado um nível específico, validar se é suportado
     if (requested) {
       if (modelSupport.supported.includes(requested)) {
@@ -471,12 +539,12 @@ export class OpenAIService {
       // Nível solicitado não suportado, usar o mais próximo suportado
       this.logger.warn(
         `Reasoning effort '${requested}' não suportado pelo modelo ${model}. ` +
-        `Usando '${modelSupport.default}' (suportados: ${modelSupport.supported.join(', ')})`,
+          `Usando '${modelSupport.default}' (suportados: ${modelSupport.supported.join(', ')})`,
         'OpenAIService',
       );
       return modelSupport.default;
     }
-    
+
     // Usar padrão do modelo
     return modelSupport.default;
   }

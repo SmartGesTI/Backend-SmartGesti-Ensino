@@ -7,7 +7,12 @@ import { UsersModule } from '../users/users.module';
 import { TenantsModule } from '../tenants/tenants.module';
 
 @Module({
-  imports: [SupabaseModule, LoggerModule, UsersModule, forwardRef(() => TenantsModule)],
+  imports: [
+    SupabaseModule,
+    LoggerModule,
+    UsersModule,
+    forwardRef(() => TenantsModule),
+  ],
   controllers: [SchoolsController],
   providers: [SchoolsService],
   exports: [SchoolsService],

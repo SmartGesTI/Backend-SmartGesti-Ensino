@@ -139,7 +139,10 @@ export class FeedbackService {
       ];
 
       // Adicionar histórico da conversa se existir
-      if (record.conversation_history && Array.isArray(record.conversation_history)) {
+      if (
+        record.conversation_history &&
+        Array.isArray(record.conversation_history)
+      ) {
         for (const msg of record.conversation_history) {
           messages.push({
             role: msg.role as 'user' | 'assistant',

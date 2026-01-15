@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { WorkflowConfig, WorkflowContext, WorkflowResult } from './workflow.types';
+import {
+  WorkflowConfig,
+  WorkflowContext,
+  WorkflowResult,
+} from './workflow.types';
 import { WorkflowExecutorService } from './workflow-executor.service';
 import { AgentRegistry } from '../agents/agent.registry';
 

@@ -22,7 +22,8 @@ export class StreamService {
     options: StreamOptions = {},
   ): Promise<Observable<StreamEvent>> {
     const provider = options.provider || this.aiConfig.getDefaultProvider();
-    const modelName = options.model || this.modelConfig.getProvider(provider)?.defaultModel;
+    const modelName =
+      options.model || this.modelConfig.getProvider(provider)?.defaultModel;
 
     if (!modelName) {
       throw new Error(`No model specified for provider ${provider}`);
@@ -30,53 +31,73 @@ export class StreamService {
 
     const model = this.providerFactory.getModel(provider, modelName);
     if (!model) {
-      throw new Error(`Model ${modelName} not available for provider ${provider}`);
+      throw new Error(
+        `Model ${modelName} not available for provider ${provider}`,
+      );
     }
 
-        const modelConfig = this.modelConfig.getModel(modelName);
-        const messages = Array.isArray(prompt) ? prompt : [{ role: 'user' as const, content: prompt }];
-        const isGpt5 = modelName.includes('gpt-5');
+    const modelConfig = this.modelConfig.getModel(modelName);
+    const messages = Array.isArray(prompt)
+      ? prompt
+      : [{ role: 'user' as const, content: prompt }];
+    const isGpt5 = modelName.includes('gpt-5');
 
-        // Apply timeout and retries from config
-        const timeout = this.aiConfig.getTimeout();
-        const abortController = new AbortController();
-        const timeoutId = setTimeout(() => {
-          abortController.abort();
-          this.logger.warn(`Stream timeout after ${timeout}ms`);
-        }, timeout);
+    // Apply timeout and retries from config
+    const timeout = this.aiConfig.getTimeout();
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+      this.logger.warn(`Stream timeout after ${timeout}ms`);
+    }, timeout);
 
-        const streamOptions: any = {
-          model,
-          messages,
-          maxOutputTokens: options.maxTokens ?? modelConfig?.maxTokens,
-          maxRetries: this.aiConfig.getMaxRetries(),
-          abortSignal: abortController.signal,
-        };
+    const streamOptions: any = {
+      model,
+      messages,
+      maxOutputTokens: options.maxTokens ?? modelConfig?.maxTokens,
+      maxRetries: this.aiConfig.getMaxRetries(),
+      abortSignal: abortController.signal,
+    };
 
-        // GPT-5 não suporta temperature, topP, frequencyPenalty, presencePenalty, stopSequences
-        if (!isGpt5) {
-          if (options.temperature !== undefined || modelConfig?.temperature !== undefined) {
-            streamOptions.temperature = options.temperature ?? modelConfig?.temperature ?? 0.7;
-          }
-          if (options.topP !== undefined || modelConfig?.topP !== undefined) {
-            streamOptions.topP = options.topP ?? modelConfig?.topP;
-          }
-          if (options.frequencyPenalty !== undefined || modelConfig?.frequencyPenalty !== undefined) {
-            streamOptions.frequencyPenalty = options.frequencyPenalty ?? modelConfig?.frequencyPenalty;
-          }
-          if (options.presencePenalty !== undefined || modelConfig?.presencePenalty !== undefined) {
-            streamOptions.presencePenalty = options.presencePenalty ?? modelConfig?.presencePenalty;
-          }
-          if (options.stopSequences !== undefined || modelConfig?.stopSequences !== undefined) {
-            streamOptions.stopSequences = options.stopSequences ?? modelConfig?.stopSequences;
-          }
-        }
+    // GPT-5 não suporta temperature, topP, frequencyPenalty, presencePenalty, stopSequences
+    if (!isGpt5) {
+      if (
+        options.temperature !== undefined ||
+        modelConfig?.temperature !== undefined
+      ) {
+        streamOptions.temperature =
+          options.temperature ?? modelConfig?.temperature ?? 0.7;
+      }
+      if (options.topP !== undefined || modelConfig?.topP !== undefined) {
+        streamOptions.topP = options.topP ?? modelConfig?.topP;
+      }
+      if (
+        options.frequencyPenalty !== undefined ||
+        modelConfig?.frequencyPenalty !== undefined
+      ) {
+        streamOptions.frequencyPenalty =
+          options.frequencyPenalty ?? modelConfig?.frequencyPenalty;
+      }
+      if (
+        options.presencePenalty !== undefined ||
+        modelConfig?.presencePenalty !== undefined
+      ) {
+        streamOptions.presencePenalty =
+          options.presencePenalty ?? modelConfig?.presencePenalty;
+      }
+      if (
+        options.stopSequences !== undefined ||
+        modelConfig?.stopSequences !== undefined
+      ) {
+        streamOptions.stopSequences =
+          options.stopSequences ?? modelConfig?.stopSequences;
+      }
+    }
 
     // Configurar provider options (se necessário para outros recursos)
     if (!streamOptions.providerOptions) {
       streamOptions.providerOptions = {};
     }
-    
+
     if (!streamOptions.providerOptions.openai) {
       streamOptions.providerOptions.openai = {};
     }
@@ -89,7 +110,7 @@ export class StreamService {
 
     return new Observable<StreamEvent>((subscriber) => {
       let fullText = '';
-      
+
       const result = streamText(streamOptions);
 
       (async () => {
@@ -100,41 +121,41 @@ export class StreamService {
           // Se houver structured output, usar fullStream para processar partialOutputStream
           if (hasStructuredOutput) {
             // Processar fullStream incluindo reasoning se disponível
-                for await (const part of result.fullStream) {
-                    const partAny = part as any;
+            for await (const part of result.fullStream) {
+              const partAny = part as any;
               const partType = partAny.type as string;
 
               // Processar text-delta e reasoning
               if (partType === 'text-delta') {
                 const delta = partAny.textDelta || '';
-                    if (delta) {
-                      fullText += delta;
-                      subscriber.next({
-                        type: 'text',
-                        data: { text: delta, fullText },
-                        timestamp: Date.now(),
-                      });
-                    }
+                if (delta) {
+                  fullText += delta;
+                  subscriber.next({
+                    type: 'text',
+                    data: { text: delta, fullText },
+                    timestamp: Date.now(),
+                  });
+                }
               } else if (partType === 'reasoning') {
                 // Forward reasoning parts to UI
                 subscriber.next({
                   type: 'reasoning',
-                  data: { 
+                  data: {
                     reasoning: partAny.reasoning || '',
                     reasoningText: partAny.reasoningText || '',
                   },
                   timestamp: Date.now(),
                 });
-                  }
-                }
+              }
+            }
 
             // Processar partialOutputStream para structured output
-                for await (const partialObject of result.partialOutputStream) {
-                  subscriber.next({
-                    type: 'partial-object',
-                    data: { partialObject },
-                    timestamp: Date.now(),
-                  });
+            for await (const partialObject of result.partialOutputStream) {
+              subscriber.next({
+                type: 'partial-object',
+                data: { partialObject },
+                timestamp: Date.now(),
+              });
             }
           } else {
             // Streaming normal de texto (sem structured output)
@@ -152,7 +173,7 @@ export class StreamService {
           const finishResult = await result;
           const usageResult = await finishResult.usage;
           const elapsedTime = Date.now() - startTime;
-          
+
           // Log telemetry
           const tokenCount = usageResult
             ? (usageResult.inputTokens ?? 0) + (usageResult.outputTokens ?? 0)

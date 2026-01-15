@@ -1,4 +1,13 @@
-import { IsString, IsOptional, IsInt, Min, IsEnum, IsArray, ValidateNested, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsInt,
+  Min,
+  IsEnum,
+  IsArray,
+  ValidateNested,
+  IsIn,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { RAG_CATEGORIES } from '../constants/rag.constants';
 import type { RagCategory } from '../constants/rag.constants';

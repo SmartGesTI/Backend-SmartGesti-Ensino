@@ -26,10 +26,10 @@ export class ChunkService {
    */
   chunkContent(content: string, frontmatter: DocumentFrontmatter): Chunk[] {
     const chunks: Chunk[] = [];
-    
+
     // 1. Extrair seções baseadas em headings
     const sections = this.extractSections(content);
-    
+
     this.logger.log(
       `Documento "${frontmatter.title}": ${sections.length} seções encontradas`,
       'ChunkService',
@@ -45,7 +45,11 @@ export class ChunkService {
         // Seção cabe inteira
         if (sectionTokens >= CHUNK_CONFIG.MIN_CHUNK_SIZE) {
           chunks.push({
-            content: this.formatChunkContent(section.title, section.content, frontmatter),
+            content: this.formatChunkContent(
+              section.title,
+              section.content,
+              frontmatter,
+            ),
             sectionTitle: section.title,
             chunkIndex: chunkIndex++,
             tokenCount: sectionTokens,
@@ -93,7 +97,7 @@ export class ChunkService {
   private extractSections(content: string): Section[] {
     const sections: Section[] = [];
     const lines = content.split('\n');
-    
+
     let currentSection: Section | null = null;
     let contentBuffer: string[] = [];
 
@@ -145,10 +149,13 @@ export class ChunkService {
   /**
    * Divide uma seção grande em chunks menores por parágrafos
    */
-  private splitLargeSection(section: Section, frontmatter: DocumentFrontmatter): Omit<Chunk, 'chunkIndex'>[] {
+  private splitLargeSection(
+    section: Section,
+    frontmatter: DocumentFrontmatter,
+  ): Omit<Chunk, 'chunkIndex'>[] {
     const chunks: Omit<Chunk, 'chunkIndex'>[] = [];
     const paragraphs = section.content.split(/\n\n+/);
-    
+
     let currentContent = '';
     let currentTokens = 0;
 
@@ -156,10 +163,17 @@ export class ChunkService {
       const paragraphTokens = this.estimateTokens(paragraph);
 
       // Se adicionar este parágrafo excede o limite
-      if (currentTokens + paragraphTokens > CHUNK_CONFIG.MAX_TOKENS && currentContent.length > 0) {
+      if (
+        currentTokens + paragraphTokens > CHUNK_CONFIG.MAX_TOKENS &&
+        currentContent.length > 0
+      ) {
         // Salvar chunk atual
         chunks.push({
-          content: this.formatChunkContent(section.title, currentContent.trim(), frontmatter),
+          content: this.formatChunkContent(
+            section.title,
+            currentContent.trim(),
+            frontmatter,
+          ),
           sectionTitle: section.title,
           tokenCount: currentTokens,
           metadata: {
@@ -171,7 +185,10 @@ export class ChunkService {
         });
 
         // Iniciar novo chunk com overlap
-        const overlapContent = this.getOverlapContent(currentContent, CHUNK_CONFIG.OVERLAP_TOKENS);
+        const overlapContent = this.getOverlapContent(
+          currentContent,
+          CHUNK_CONFIG.OVERLAP_TOKENS,
+        );
         currentContent = overlapContent + '\n\n' + paragraph;
         currentTokens = this.estimateTokens(currentContent);
       } else {
@@ -182,9 +199,16 @@ export class ChunkService {
     }
 
     // Salvar último chunk
-    if (currentContent.trim().length > 0 && currentTokens >= CHUNK_CONFIG.MIN_CHUNK_SIZE) {
+    if (
+      currentContent.trim().length > 0 &&
+      currentTokens >= CHUNK_CONFIG.MIN_CHUNK_SIZE
+    ) {
       chunks.push({
-        content: this.formatChunkContent(section.title, currentContent.trim(), frontmatter),
+        content: this.formatChunkContent(
+          section.title,
+          currentContent.trim(),
+          frontmatter,
+        ),
         sectionTitle: section.title,
         tokenCount: currentTokens,
         metadata: {
@@ -202,7 +226,10 @@ export class ChunkService {
   /**
    * Divide conteúdo por parágrafos (fallback quando não há headings)
    */
-  private chunkByParagraphs(content: string, frontmatter: DocumentFrontmatter): Omit<Chunk, 'chunkIndex'>[] {
+  private chunkByParagraphs(
+    content: string,
+    frontmatter: DocumentFrontmatter,
+  ): Omit<Chunk, 'chunkIndex'>[] {
     const section: Section = {
       title: frontmatter.title,
       level: 1,
@@ -223,11 +250,11 @@ export class ChunkService {
 
     // Adicionar contexto do documento
     parts.push(`[Documento: ${frontmatter.title}]`);
-    
+
     if (frontmatter.menuPath) {
       parts.push(`[Menu: ${frontmatter.menuPath}]`);
     }
-    
+
     if (frontmatter.route) {
       parts.push(`[Rota: ${frontmatter.route}]`);
     }
@@ -248,7 +275,7 @@ export class ChunkService {
   private getOverlapContent(content: string, targetTokens: number): string {
     const words = content.split(/\s+/);
     const targetWords = Math.floor(targetTokens * 0.75); // ~0.75 palavras por token
-    
+
     if (words.length <= targetWords) {
       return content;
     }
@@ -261,7 +288,7 @@ export class ChunkService {
    */
   estimateTokens(text: string): number {
     if (!text) return 0;
-    const words = text.split(/\s+/).filter(w => w.length > 0);
+    const words = text.split(/\s+/).filter((w) => w.length > 0);
     return Math.ceil(words.length * 1.3); // Português usa ~1.3 tokens por palavra
   }
 }

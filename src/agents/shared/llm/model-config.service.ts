@@ -13,7 +13,7 @@ export class ModelConfigService {
     // Modelos OpenAI do sistema (conforme definido no frontend)
     // maxTokens = maximum completion tokens (output tokens)
     // Context window é maior, mas max_tokens limita apenas a saída
-    
+
     // === GPT-4.1 Family ===
     // Context: 1,047,576 tokens | Max Output: 32,768 tokens
     this.models.set('gpt-4.1', {
@@ -113,7 +113,7 @@ export class ModelConfigService {
       supportsStructuredOutputs: true,
       costPer1kTokens: {
         input: 0.05,
-        output: 0.40,
+        output: 0.4,
       },
     });
 
@@ -162,7 +162,11 @@ export class ModelConfigService {
   /**
    * Lista modelos por provedor
    */
-  listModelsByProvider(provider: 'openai' | 'anthropic' | 'other'): ModelInfo[] {
-    return Array.from(this.models.values()).filter((m) => m.provider === provider);
+  listModelsByProvider(
+    provider: 'openai' | 'anthropic' | 'other',
+  ): ModelInfo[] {
+    return Array.from(this.models.values()).filter(
+      (m) => m.provider === provider,
+    );
   }
 }

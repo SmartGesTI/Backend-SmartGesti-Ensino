@@ -24,20 +24,14 @@ export class PdfGeneratorService {
    */
   normalizeReportData(input: any): ReportDocument {
     const nowIso = new Date().toISOString();
-    const title =
-      input?.title ||
-      input?.report_title ||
-      'Relatório Gerado';
+    const title = input?.title || input?.report_title || 'Relatório Gerado';
 
     const summary =
       input?.summary ||
       (typeof input === 'string' ? input : undefined) ||
       input?.text;
 
-    const keyPoints: string[] =
-      input?.key_points ||
-      input?.bullets ||
-      [];
+    const keyPoints: string[] = input?.key_points || input?.bullets || [];
 
     // Converte analises ou objetos arbitrários em seções
     const sections: ReportSection[] = [];
@@ -54,7 +48,8 @@ export class PdfGeneratorService {
       const a = input.analysis;
       const bullets: string[] = [];
       if (a.sentiment) bullets.push(`Sentimento: ${a.sentiment}`);
-      if (a.topics?.length) bullets.push(...a.topics.map((t: string) => `Tópico: ${t}`));
+      if (a.topics?.length)
+        bullets.push(...a.topics.map((t: string) => `Tópico: ${t}`));
       sections.push({
         heading: 'Análise Detalhada',
         body: a.description || undefined,
@@ -139,7 +134,9 @@ export class PdfGeneratorService {
     // Data
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    const date = new Date(report.generated_at || Date.now()).toLocaleString('pt-BR');
+    const date = new Date(report.generated_at || Date.now()).toLocaleString(
+      'pt-BR',
+    );
     doc.text(`Gerado em: ${date}`, margin, y);
     y += 10;
 

@@ -37,16 +37,29 @@ export class PermissionsController {
     const userId = req.user.sub; // Supabase user ID (UUID)
 
     // Buscar permissions_version do usuário
-    const permissionsVersion = await this.permissionsService.getUserPermissionsVersion(userId);
+    const permissionsVersion =
+      await this.permissionsService.getUserPermissionsVersion(userId);
 
     // Chamar isOwner apenas uma vez e reutilizar
     const isOwner = await this.permissionsService.isOwner(userId, tenantId);
 
     // Buscar permissions, hierarchy e roles em paralelo
     const [permissions, hierarchy, roles] = await Promise.all([
-      this.permissionsService.getUserPermissionsWithOwner(userId, tenantId, schoolId, isOwner),
-      this.permissionsService.getUserHighestHierarchyWithOwner(userId, tenantId, schoolId, isOwner),
-      this.rolesService.getUserRoles(userId, tenantId, schoolId).catch(() => []), // Falha silenciosa para roles
+      this.permissionsService.getUserPermissionsWithOwner(
+        userId,
+        tenantId,
+        schoolId,
+        isOwner,
+      ),
+      this.permissionsService.getUserHighestHierarchyWithOwner(
+        userId,
+        tenantId,
+        schoolId,
+        isOwner,
+      ),
+      this.rolesService
+        .getUserRoles(userId, tenantId, schoolId)
+        .catch(() => []), // Falha silenciosa para roles
     ]);
 
     // Adicionar header com permissions_version

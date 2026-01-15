@@ -13,11 +13,14 @@ export interface RagToolDefinition {
     description: string;
     parameters: {
       type: 'object';
-      properties: Record<string, {
-        type: string;
-        description: string;
-        enum?: string[];
-      }>;
+      properties: Record<
+        string,
+        {
+          type: string;
+          description: string;
+          enum?: string[];
+        }
+      >;
       required?: string[];
     };
   };
@@ -55,7 +58,8 @@ export const RAG_TOOLS: RagToolDefinition[] = [
     type: 'function',
     function: {
       name: 'list_public_agents',
-      description: 'Lista os agentes de IA públicos disponíveis no sistema. Use quando o usuário perguntar sobre agentes disponíveis, templates de agentes, ou quiser saber quais agentes existem.',
+      description:
+        'Lista os agentes de IA públicos disponíveis no sistema. Use quando o usuário perguntar sobre agentes disponíveis, templates de agentes, ou quiser saber quais agentes existem.',
       parameters: {
         type: 'object',
         properties: {
@@ -77,7 +81,8 @@ export const RAG_TOOLS: RagToolDefinition[] = [
     type: 'function',
     function: {
       name: 'get_agent_details',
-      description: 'Obtém detalhes completos de um agente específico pelo nome. Use quando o usuário perguntar detalhes sobre um agente específico.',
+      description:
+        'Obtém detalhes completos de um agente específico pelo nome. Use quando o usuário perguntar detalhes sobre um agente específico.',
       parameters: {
         type: 'object',
         properties: {

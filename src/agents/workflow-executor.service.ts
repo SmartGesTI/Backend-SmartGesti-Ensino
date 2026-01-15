@@ -61,7 +61,8 @@ export class WorkflowExecutorService {
     this.openaiApiKey = this.configService.get<string>('OPENAI_API_KEY') || '';
     // SDK usa OPENAI_DEFAULT_MODEL como variável padrão
     // Fallback: gpt-4.1-mini (rápido e econômico para tarefas gerais)
-    this.defaultModel = this.configService.get<string>('OPENAI_DEFAULT_MODEL') || 'gpt-4.1-mini';
+    this.defaultModel =
+      this.configService.get<string>('OPENAI_DEFAULT_MODEL') || 'gpt-4.1-mini';
 
     // Log do modelo configurado para debug
     this.logger.log(`Modelo OpenAI configurado: ${this.defaultModel}`);
@@ -168,7 +169,8 @@ export class WorkflowExecutorService {
         const node = orderedNodes[i];
         const nodeType = node.id.split('-').slice(0, -1).join('-') || node.id;
 
-        const nodeCategory = (node as any).category || (node as any).data?.category;
+        const nodeCategory =
+          (node as any).category || (node as any).data?.category;
 
         const isInputNode =
           nodeType.startsWith('receive-') ||
@@ -201,7 +203,8 @@ export class WorkflowExecutorService {
 
           // Prioridade: 1) modelo da execução, 2) modelo do nó, 3) default
           const executionModel = params._executionModel;
-          modelUsed = executionModel || node.data.config?.model || this.defaultModel;
+          modelUsed =
+            executionModel || node.data.config?.model || this.defaultModel;
 
           currentData = await this.executeAINode(
             node,
@@ -212,14 +215,21 @@ export class WorkflowExecutorService {
 
           // Acumular usage se disponível no trace
           if (currentData?.__trace?.usage) {
-            totalUsage.prompt_tokens += currentData.__trace.usage.prompt_tokens || 0;
-            totalUsage.completion_tokens += currentData.__trace.usage.completion_tokens || 0;
-            totalUsage.total_tokens += currentData.__trace.usage.total_tokens || 0;
+            totalUsage.prompt_tokens +=
+              currentData.__trace.usage.prompt_tokens || 0;
+            totalUsage.completion_tokens +=
+              currentData.__trace.usage.completion_tokens || 0;
+            totalUsage.total_tokens +=
+              currentData.__trace.usage.total_tokens || 0;
           }
         } else if (isOutputNode) {
           const nodeParams = params[node.id] || {};
           const format = nodeParams.format || 'pdf';
-          const result = await this.executeOutputNode(node, currentData, format);
+          const result = await this.executeOutputNode(
+            node,
+            currentData,
+            format,
+          );
 
           const processingTime = Date.now() - startTime;
 
@@ -268,9 +278,7 @@ export class WorkflowExecutorService {
     const files = nodeParams?.files;
 
     if (!data && !files) {
-      throw new Error(
-        `Dados não fornecidos para o nó ${node.data.label}`,
-      );
+      throw new Error(`Dados não fornecidos para o nó ${node.data.label}`);
     }
 
     // Se for arquivo(s), retornar estrutura apropriada
@@ -305,21 +313,28 @@ export class WorkflowExecutorService {
     const baseInstructions = node.data.config?.instructions?.trim() || '';
 
     if (!baseInstructions) {
-      throw new Error(`Instruções não configuradas para o nó de IA: ${node.data.label}. Configure as instruções no painel de configuração do nó.`);
+      throw new Error(
+        `Instruções não configuradas para o nó de IA: ${node.data.label}. Configure as instruções no painel de configuração do nó.`,
+      );
     }
 
     // Prioridade: 1) modelo da execução, 2) modelo do nó, 3) default
-    const model = options?.executionModel || node.data.config?.model || this.defaultModel;
+    const model =
+      options?.executionModel || node.data.config?.model || this.defaultModel;
 
     // Adicionar instrução obrigatória sobre formato JSON
     const jsonFormatInstruction = `\n\nIMPORTANTE: Você DEVE retornar APENAS JSON válido, sem texto adicional, sem markdown, sem code blocks. O JSON deve estar no formato exato especificado na seção SAÍDA das instruções. Não inclua explicações, comentários ou texto fora do JSON.`;
 
     // Combinar instruções extras do config (salvas no agente) com as da execução
-    const configExtraInstructions = node.data.config?.extraInstructions?.trim() || '';
+    const configExtraInstructions =
+      node.data.config?.extraInstructions?.trim() || '';
     const executionExtraInstructions = extraInstructions?.trim() || '';
-    
+
     // Juntar ambas as instruções extras (config primeiro, depois execução)
-    const allExtraInstructions = [configExtraInstructions, executionExtraInstructions]
+    const allExtraInstructions = [
+      configExtraInstructions,
+      executionExtraInstructions,
+    ]
       .filter(Boolean)
       .join(' ');
 
@@ -337,9 +352,11 @@ export class WorkflowExecutorService {
       nodeType.startsWith('analyze-curriculum') ||
       nodeType.startsWith('extract-information');
 
-    let extractedDocInfo: { text: string; filesProcessed: number } | null = null;
+    let extractedDocInfo: { text: string; filesProcessed: number } | null =
+      null;
     if (shouldExtractDocuments && inputData && typeof inputData === 'object') {
-      extractedDocInfo = await this.documentTextExtractor.extractTextFromInput(inputData);
+      extractedDocInfo =
+        await this.documentTextExtractor.extractTextFromInput(inputData);
       if (extractedDocInfo.text && extractedDocInfo.text.trim().length > 0) {
         inputText = extractedDocInfo.text;
       }
@@ -365,13 +382,17 @@ export class WorkflowExecutorService {
     try {
       // Determinar modelo a usar
       const modelToUse = this.getModelName(model);
-      
+
       this.logger.log(`Executando nó de IA: ${node.id}`);
-      this.logger.log(`Modelo da execução: ${options?.executionModel || 'não especificado'}`);
-      this.logger.log(`Modelo configurado no nó: ${node.data.config?.model || 'não especificado'}`);
+      this.logger.log(
+        `Modelo da execução: ${options?.executionModel || 'não especificado'}`,
+      );
+      this.logger.log(
+        `Modelo configurado no nó: ${node.data.config?.model || 'não especificado'}`,
+      );
       this.logger.log(`Modelo default: ${this.defaultModel}`);
       this.logger.log(`Modelo final a usar: ${modelToUse}`);
-      
+
       // Criar agente usando o SDK
       const agent = new Agent({
         name: node.data.label,
@@ -385,7 +406,7 @@ export class WorkflowExecutorService {
       // Parsear resposta (pode ser JSON ou texto)
       let parsedResult: any;
       const output = result.finalOutput || '';
-      
+
       // Se o output estiver vazio, retornar erro
       if (!output || output.trim().length === 0) {
         this.logger.warn(`Resposta vazia do agente ${node.id}`);
@@ -397,11 +418,15 @@ export class WorkflowExecutorService {
         // Remover markdown code blocks se existirem
         let cleanedOutput = output.trim();
         if (cleanedOutput.startsWith('```json')) {
-          cleanedOutput = cleanedOutput.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          cleanedOutput = cleanedOutput
+            .replace(/^```json\s*/, '')
+            .replace(/\s*```$/, '');
         } else if (cleanedOutput.startsWith('```')) {
-          cleanedOutput = cleanedOutput.replace(/^```\s*/, '').replace(/\s*```$/, '');
+          cleanedOutput = cleanedOutput
+            .replace(/^```\s*/, '')
+            .replace(/\s*```$/, '');
         }
-        
+
         parsedResult = JSON.parse(cleanedOutput);
       } catch (parseError) {
         // Se não for JSON válido, tentar extrair JSON do texto
@@ -411,12 +436,16 @@ export class WorkflowExecutorService {
             parsedResult = JSON.parse(jsonMatch[0]);
           } else {
             // Se não encontrar JSON, retornar como texto
-            this.logger.warn(`Resposta não é JSON válido para nó ${node.id}, retornando como texto`);
+            this.logger.warn(
+              `Resposta não é JSON válido para nó ${node.id}, retornando como texto`,
+            );
             parsedResult = { text: output };
           }
         } catch (secondParseError) {
           // Se ainda falhar, retornar como texto
-          this.logger.warn(`Não foi possível parsear JSON para nó ${node.id}: ${secondParseError}`);
+          this.logger.warn(
+            `Não foi possível parsear JSON para nó ${node.id}: ${secondParseError}`,
+          );
           parsedResult = { text: output };
         }
       }
@@ -435,8 +464,14 @@ export class WorkflowExecutorService {
 
       // Extrair usage do resultado se disponível
       // O SDK de agents pode expor usage em result.usage ou result.rawResponses
-      let usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | undefined;
-      
+      let usage:
+        | {
+            prompt_tokens?: number;
+            completion_tokens?: number;
+            total_tokens?: number;
+          }
+        | undefined;
+
       // Tentar extrair usage de diferentes locais possíveis no resultado
       if ((result as any).usage) {
         usage = (result as any).usage;
@@ -466,13 +501,13 @@ export class WorkflowExecutorService {
       return { ...parsedResult, __trace: trace };
     } catch (error: any) {
       this.logger.error(`Erro ao executar nó de IA ${node.id}`, error);
-      
+
       // Melhorar mensagem de erro
       let errorMessage = 'Erro desconhecido';
       if (error.message) {
         errorMessage = error.message;
       }
-      
+
       throw new Error(`Erro ao executar nó de IA: ${errorMessage}`);
     }
   }
@@ -504,10 +539,13 @@ export class WorkflowExecutorService {
           );
         }
 
-        fileBuffer = await this.markdownPdfService.renderPdfFromMarkdown(markdown, {
-          institutionName: 'Instituição',
-          generatedAtIso: new Date().toISOString(),
-        });
+        fileBuffer = await this.markdownPdfService.renderPdfFromMarkdown(
+          markdown,
+          {
+            institutionName: 'Instituição',
+            generatedAtIso: new Date().toISOString(),
+          },
+        );
         fileName = 'relatorio.pdf';
         mimeType = 'application/pdf';
         break;
@@ -517,7 +555,8 @@ export class WorkflowExecutorService {
         if (markdown && markdown.trim().length > 0) {
           fileBuffer = Buffer.from(markdown, 'utf-8');
         } else {
-          const report: ReportDocument = this.pdfGenerator.normalizeReportData(inputData);
+          const report: ReportDocument =
+            this.pdfGenerator.normalizeReportData(inputData);
           const md = this.pdfGenerator.generateMarkdown(report);
           fileBuffer = Buffer.from(md, 'utf-8');
         }
@@ -526,7 +565,8 @@ export class WorkflowExecutorService {
         break;
       }
       case 'json': {
-        const report: ReportDocument = this.pdfGenerator.normalizeReportData(inputData);
+        const report: ReportDocument =
+          this.pdfGenerator.normalizeReportData(inputData);
         const json = this.pdfGenerator.generateJSON(report);
         fileBuffer = Buffer.from(json, 'utf-8');
         fileName = 'relatorio.json';

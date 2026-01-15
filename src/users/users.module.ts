@@ -6,11 +6,7 @@ import { LoggerModule } from '../common/logger/logger.module';
 import { TenantsModule } from '../tenants/tenants.module';
 
 @Module({
-  imports: [
-    SupabaseModule,
-    LoggerModule,
-    forwardRef(() => TenantsModule),
-  ],
+  imports: [SupabaseModule, LoggerModule, forwardRef(() => TenantsModule)],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],

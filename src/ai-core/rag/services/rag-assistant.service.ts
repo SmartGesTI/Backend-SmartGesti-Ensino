@@ -6,7 +6,10 @@ import { OpenAIService } from '../../../agents/shared/llm/openai.service';
 import { ChatMessageDto } from '../dto';
 import { RagToolsService } from '../tools/rag-tools.service';
 import { RAG_TOOLS, RagToolName } from '../tools/rag-tools.types';
-import { StreamingEvent, LLMMessage } from '../../../agents/shared/llm/llm.types';
+import {
+  StreamingEvent,
+  LLMMessage,
+} from '../../../agents/shared/llm/llm.types';
 
 export interface AnswerResult {
   answer: string;
@@ -96,7 +99,8 @@ export class RagAssistantService {
   private formatContext(chunks: any[]): string {
     return chunks
       .map((chunk: any, idx: number) => {
-        const title = chunk.document_title || chunk.section_title || 'Documento';
+        const title =
+          chunk.document_title || chunk.section_title || 'Documento';
         return `[Fonte ${idx + 1}: ${title}]\n${chunk.content}`;
       })
       .join('\n\n---\n\n');
@@ -121,13 +125,16 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
    * GPT-5-nano tem dificuldade em decidir sozinho quando usar tools
    * Retorna também o nome do agente extraído da pergunta (se aplicável)
    */
-  private detectRequiredTool(question: string, history?: ChatMessageDto[]): { 
-    required: boolean; 
+  private detectRequiredTool(
+    question: string,
+    history?: ChatMessageDto[],
+  ): {
+    required: boolean;
     toolName?: RagToolName;
     extractedAgentName?: string;
   } {
     const q = question.toLowerCase();
-    
+
     // Patterns para list_public_agents
     const listAgentsPatterns = [
       'agentes públicos',
@@ -141,11 +148,11 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
       'ver agentes',
       'mostrar agentes',
     ];
-    
-    if (listAgentsPatterns.some(p => q.includes(p))) {
+
+    if (listAgentsPatterns.some((p) => q.includes(p))) {
       return { required: true, toolName: 'list_public_agents' };
     }
-    
+
     // Patterns para get_agent_details - MUITO mais abrangente
     const detailsPatterns = [
       'detalhes do agente',
@@ -168,7 +175,7 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
       'descreva o agente',
       'descreva o',
     ];
-    
+
     // Nomes de agentes conhecidos (para detectar menções diretas)
     const knownAgentNames = [
       'analisador de currículos',
@@ -179,7 +186,7 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
       'analisador',
       'gerador',
     ];
-    
+
     // Verificar se menciona um agente conhecido diretamente
     for (const agentName of knownAgentNames) {
       if (q.includes(agentName)) {
@@ -192,26 +199,48 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
         } else if (agentName === 'sumarizador') {
           extractedName = 'Sumarizador de Textos';
         }
-        return { required: true, toolName: 'get_agent_details', extractedAgentName: extractedName };
+        return {
+          required: true,
+          toolName: 'get_agent_details',
+          extractedAgentName: extractedName,
+        };
       }
     }
-    
+
     // Verificar patterns de detalhes
-    if (detailsPatterns.some(p => q.includes(p))) {
+    if (detailsPatterns.some((p) => q.includes(p))) {
       return { required: true, toolName: 'get_agent_details' };
     }
-    
+
     // Verificar no histórico se o usuário está pedindo detalhes de algo mencionado antes
     // Ex: "sim, mostre os detalhes" após listar agentes
-    const confirmationPatterns = ['sim', 'ok', 'pode ser', 'faça', 'mostre', 'mostra', 'quero', 'gostaria'];
-    const detailsKeywords = ['detalhes', 'detalhe', 'mais', 'completo', 'busca', 'buscar'];
-    
-    const hasConfirmation = confirmationPatterns.some(p => q.includes(p));
-    const hasDetailsKeyword = detailsKeywords.some(p => q.includes(p));
-    
+    const confirmationPatterns = [
+      'sim',
+      'ok',
+      'pode ser',
+      'faça',
+      'mostre',
+      'mostra',
+      'quero',
+      'gostaria',
+    ];
+    const detailsKeywords = [
+      'detalhes',
+      'detalhe',
+      'mais',
+      'completo',
+      'busca',
+      'buscar',
+    ];
+
+    const hasConfirmation = confirmationPatterns.some((p) => q.includes(p));
+    const hasDetailsKeyword = detailsKeywords.some((p) => q.includes(p));
+
     if (hasConfirmation && hasDetailsKeyword && history && history.length > 0) {
       // Verificar se o histórico menciona algum agente
-      const lastAssistantMsg = history.filter(m => m.role === 'assistant').pop();
+      const lastAssistantMsg = history
+        .filter((m) => m.role === 'assistant')
+        .pop();
       if (lastAssistantMsg) {
         const content = lastAssistantMsg.content.toLowerCase();
         for (const agentName of knownAgentNames) {
@@ -221,7 +250,7 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
         }
       }
     }
-    
+
     return { required: false };
   }
 
@@ -234,29 +263,39 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
     tenantId?: string,
     schoolId?: string,
   ): Promise<AnswerResult> {
-    this.logger.log(`Processing question: ${question} (tenant: ${tenantId}, school: ${schoolId})`);
-    
+    this.logger.log(
+      `Processing question: ${question} (tenant: ${tenantId}, school: ${schoolId})`,
+    );
+
     // Detectar se deve forçar uso de tool (GPT-5-nano precisa de ajuda)
     const toolDetection = this.detectRequiredTool(question, history);
     if (toolDetection.required) {
-      this.logger.log(`Detected required tool: ${toolDetection.toolName}${toolDetection.extractedAgentName ? ` (agent: ${toolDetection.extractedAgentName})` : ''}`);
+      this.logger.log(
+        `Detected required tool: ${toolDetection.toolName}${toolDetection.extractedAgentName ? ` (agent: ${toolDetection.extractedAgentName})` : ''}`,
+      );
     }
-    
+
     // Buscar contexto da knowledge base
-    const embeddingResult = await this.embeddingService.generateEmbedding(question);
+    const embeddingResult =
+      await this.embeddingService.generateEmbedding(question);
     const questionEmbedding = embeddingResult.embedding;
     const relevantChunks = await this.searchSimilarChunks(questionEmbedding, 5);
-    
-    const context = relevantChunks.length > 0 
-      ? this.formatContext(relevantChunks)
-      : 'Nenhum documento relevante encontrado na base de conhecimento.';
-    
+
+    const context =
+      relevantChunks.length > 0
+        ? this.formatContext(relevantChunks)
+        : 'Nenhum documento relevante encontrado na base de conhecimento.';
+
     const userPrompt = this.buildUserPrompt(context, question);
 
     // Montar mensagens: system (estático) + histórico + user (dinâmico)
-    const messages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_calls?: any[]; tool_call_id?: string; name?: string }> = [
-      { role: 'system', content: SYSTEM_PROMPT },
-    ];
+    const messages: Array<{
+      role: 'system' | 'user' | 'assistant' | 'tool';
+      content: string;
+      tool_calls?: any[];
+      tool_call_id?: string;
+      name?: string;
+    }> = [{ role: 'system', content: SYSTEM_PROMPT }];
 
     // Adicionar histórico de conversa (limitar a últimas 10 mensagens)
     if (history && history.length > 0) {
@@ -297,8 +336,10 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
 
     // Se houver tool_calls, executar e fazer segunda chamada
     if (response.tool_calls && response.tool_calls.length > 0) {
-      this.logger.log(`Tool calls detected: ${response.tool_calls.map(tc => tc.function.name).join(', ')}`);
-      
+      this.logger.log(
+        `Tool calls detected: ${response.tool_calls.map((tc) => tc.function.name).join(', ')}`,
+      );
+
       // Adicionar resposta do assistente com tool_calls
       messages.push({
         role: 'assistant',
@@ -310,27 +351,42 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
       for (const toolCall of response.tool_calls) {
         const toolName = toolCall.function.name as RagToolName;
         let toolArgs = JSON.parse(toolCall.function.arguments || '{}');
-        
+
         // Se detectamos um nome de agente na pergunta e a tool precisa, usar ele
-        if (toolName === 'get_agent_details' && toolDetection.extractedAgentName && !toolArgs.agentName) {
+        if (
+          toolName === 'get_agent_details' &&
+          toolDetection.extractedAgentName &&
+          !toolArgs.agentName
+        ) {
           toolArgs.agentName = toolDetection.extractedAgentName;
-          this.logger.log(`Using extracted agent name: ${toolDetection.extractedAgentName}`);
+          this.logger.log(
+            `Using extracted agent name: ${toolDetection.extractedAgentName}`,
+          );
         }
-        
+
         usedTools.push(toolName);
-        this.logger.log(`Executing tool: ${toolName} with args: ${JSON.stringify(toolArgs)}`);
-        
-        const toolResult = await this.ragToolsService.executeTool(toolName, toolArgs, tenantId, schoolId);
-        
+        this.logger.log(
+          `Executing tool: ${toolName} with args: ${JSON.stringify(toolArgs)}`,
+        );
+
+        const toolResult = await this.ragToolsService.executeTool(
+          toolName,
+          toolArgs,
+          tenantId,
+          schoolId,
+        );
+
         // Armazenar resultado da tool para o frontend
         if (toolResult.success && toolResult.data) {
           toolResults[toolName] = toolResult.data;
         }
-        
+
         // Adicionar resultado da tool
         messages.push({
           role: 'tool',
-          content: JSON.stringify(toolResult.success ? toolResult.data : { error: toolResult.error }),
+          content: JSON.stringify(
+            toolResult.success ? toolResult.data : { error: toolResult.error },
+          ),
           tool_call_id: toolCall.id,
           name: toolName,
         });
@@ -367,7 +423,7 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
     history?: ChatMessageDto[],
   ): Promise<AnswerResult> {
     this.logger.log('Regenerating answer for: ' + question);
-    
+
     // Por enquanto, simplesmente chama answerQuestion novamente
     // Futuramente pode usar temperatura maior para respostas diferentes
     return this.answerQuestion(question, history);
@@ -385,9 +441,11 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
     const subject = new Subject<StreamingEvent>();
 
     // Executar de forma assíncrona
-    this.executeStreaming(question, history, tenantId, schoolId, subject).catch((error) => {
-      subject.error(error);
-    });
+    this.executeStreaming(question, history, tenantId, schoolId, subject).catch(
+      (error) => {
+        subject.error(error);
+      },
+    );
 
     return subject.asObservable();
   }
@@ -400,25 +458,34 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
     subject: Subject<StreamingEvent>,
   ): Promise<void> {
     const requestId = `rag-stream-${Date.now()}`;
-    
+
     try {
-      this.logger.log(`[${requestId}] Iniciando streaming para: ${question.substring(0, 50)}...`);
+      this.logger.log(
+        `[${requestId}] Iniciando streaming para: ${question.substring(0, 50)}...`,
+      );
 
       // Detectar se deve forçar uso de tool
       const toolDetection = this.detectRequiredTool(question, history);
       if (toolDetection.required) {
-        this.logger.log(`[${requestId}] Tool detectada: ${toolDetection.toolName}`);
+        this.logger.log(
+          `[${requestId}] Tool detectada: ${toolDetection.toolName}`,
+        );
       }
 
       // Buscar contexto da knowledge base
-      const embeddingResult = await this.embeddingService.generateEmbedding(question);
+      const embeddingResult =
+        await this.embeddingService.generateEmbedding(question);
       const questionEmbedding = embeddingResult.embedding;
-      const relevantChunks = await this.searchSimilarChunks(questionEmbedding, 5);
-      
-      const context = relevantChunks.length > 0 
-        ? this.formatContext(relevantChunks)
-        : 'Nenhum documento relevante encontrado na base de conhecimento.';
-      
+      const relevantChunks = await this.searchSimilarChunks(
+        questionEmbedding,
+        5,
+      );
+
+      const context =
+        relevantChunks.length > 0
+          ? this.formatContext(relevantChunks)
+          : 'Nenhum documento relevante encontrado na base de conhecimento.';
+
       const userPrompt = this.buildUserPrompt(context, question);
 
       // Montar mensagens
@@ -461,7 +528,9 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
 
       // Se houver tool_calls, executar
       if (response.tool_calls && response.tool_calls.length > 0) {
-        this.logger.log(`[${requestId}] Tool calls: ${response.tool_calls.map(tc => tc.function.name).join(', ')}`);
+        this.logger.log(
+          `[${requestId}] Tool calls: ${response.tool_calls.map((tc) => tc.function.name).join(', ')}`,
+        );
 
         messages.push({
           role: 'assistant',
@@ -472,11 +541,15 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
         for (const toolCall of response.tool_calls) {
           const toolName = toolCall.function.name as RagToolName;
           let toolArgs = JSON.parse(toolCall.function.arguments || '{}');
-          
-          if (toolName === 'get_agent_details' && toolDetection.extractedAgentName && !toolArgs.agentName) {
+
+          if (
+            toolName === 'get_agent_details' &&
+            toolDetection.extractedAgentName &&
+            !toolArgs.agentName
+          ) {
             toolArgs.agentName = toolDetection.extractedAgentName;
           }
-          
+
           usedTools.push(toolName);
 
           // Emitir evento de tool_call
@@ -486,8 +559,13 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
             timestamp: Date.now(),
           });
 
-          const toolResult = await this.ragToolsService.executeTool(toolName, toolArgs, tenantId, schoolId);
-          
+          const toolResult = await this.ragToolsService.executeTool(
+            toolName,
+            toolArgs,
+            tenantId,
+            schoolId,
+          );
+
           if (toolResult.success && toolResult.data) {
             toolResults[toolName] = toolResult.data;
           }
@@ -501,7 +579,11 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
 
           messages.push({
             role: 'tool',
-            content: JSON.stringify(toolResult.success ? toolResult.data : { error: toolResult.error }),
+            content: JSON.stringify(
+              toolResult.success
+                ? toolResult.data
+                : { error: toolResult.error },
+            ),
             tool_call_id: toolCall.id,
             name: toolName,
           });
@@ -546,7 +628,9 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
           subject.complete();
         },
         complete: () => {
-          this.logger.log(`[${requestId}] Stream completo. Texto: ${accumulatedContent.length} chars`);
+          this.logger.log(
+            `[${requestId}] Stream completo. Texto: ${accumulatedContent.length} chars`,
+          );
           subject.next({
             type: 'done',
             data: {
@@ -559,7 +643,6 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
           subject.complete();
         },
       });
-
     } catch (error: any) {
       this.logger.error(`[${requestId}] Erro: ${error.message}`);
       subject.next({
@@ -571,9 +654,12 @@ Analise o contexto acima e responda à pergunta seguindo as regras e formato esp
     }
   }
 
-  private async searchSimilarChunks(embedding: number[], limit = 5): Promise<any[]> {
+  private async searchSimilarChunks(
+    embedding: number[],
+    limit = 5,
+  ): Promise<any[]> {
     const embeddingStr = this.embeddingService.embeddingToVector(embedding);
-    
+
     const client = this.supabase.getClient();
     const { data: results, error } = await client.rpc('match_rag_chunks', {
       query_embedding: embeddingStr,

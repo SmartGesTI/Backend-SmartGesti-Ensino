@@ -5,7 +5,10 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PermissionsService, PermissionContextResult } from '../permissions.service';
+import {
+  PermissionsService,
+  PermissionContextResult,
+} from '../permissions.service';
 import { TenantCacheService } from '../../common/cache/tenant-cache.service';
 import {
   PERMISSION_KEY,
@@ -26,9 +29,11 @@ export class PermissionGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     // Obter requisitos de permissão do decorator
-    const permissionRequirement = this.reflector.getAllAndOverride<
-      PermissionRequirement
-    >(PERMISSION_KEY, [context.getHandler(), context.getClass()]);
+    const permissionRequirement =
+      this.reflector.getAllAndOverride<PermissionRequirement>(PERMISSION_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
 
     const requiredRole = this.reflector.getAllAndOverride<string>(ROLE_KEY, [
       context.getHandler(),
@@ -68,7 +73,7 @@ export class PermissionGuard implements CanActivate {
     if (!resolvedTenantId) {
       throw new ForbiddenException(`Tenant não encontrado: ${tenantId}`);
     }
-    
+
     // Atualizar tenantId e header para uso posterior
     tenantId = resolvedTenantId;
     request.headers['x-tenant-id'] = resolvedTenantId;
@@ -101,7 +106,9 @@ export class PermissionGuard implements CanActivate {
 
     // Se é owner, permitir acesso imediatamente
     if (permContext.isOwner) {
-      console.log('[PermissionGuard] Usuário é owner, permitindo acesso imediatamente');
+      console.log(
+        '[PermissionGuard] Usuário é owner, permitindo acesso imediatamente',
+      );
       return true;
     }
 
@@ -127,7 +134,7 @@ export class PermissionGuard implements CanActivate {
       const permissions = permContext.permissions;
 
       // Verificar permissão usando dados já carregados
-      const hasPermission = 
+      const hasPermission =
         permissions['*']?.includes('*') ||
         permissions['*']?.includes(action) ||
         permissions[resource]?.includes(action) ||

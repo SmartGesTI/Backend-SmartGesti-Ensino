@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsInt, IsOptional, IsObject, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsInt,
+  IsOptional,
+  IsObject,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class CreateRoleDto {
   @IsString()

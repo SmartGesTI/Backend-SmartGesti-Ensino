@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { PermissionsCacheService, CachedPermissions } from './permissions-cache.service';
+import {
+  PermissionsCacheService,
+  CachedPermissions,
+} from './permissions-cache.service';
 
 export interface PermissionContext {
   tenantId: string;
@@ -30,8 +33,11 @@ export class PermissionsService {
    * @param supabaseId - UUID do Supabase (armazenado no campo auth0_id)
    * @returns UUID do usuário ou null se não encontrado
    */
-  private async getUserUuidFromSupabase(supabaseId: string): Promise<string | null> {
-    const { data, error } = await this.supabase.getClient()
+  private async getUserUuidFromSupabase(
+    supabaseId: string,
+  ): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .getClient()
       .from('users')
       .select('id')
       .eq('auth0_id', supabaseId)
@@ -58,14 +64,17 @@ export class PermissionsService {
     schoolId?: string,
   ): Promise<PermissionContextResult | null> {
     // 1. Buscar dados básicos do usuário (userId e permissionsVersion) - SEMPRE necessário
-    const { data: userData, error: userError } = await this.supabase.getClient()
+    const { data: userData, error: userError } = await this.supabase
+      .getClient()
       .from('users')
       .select('id, permissions_version')
       .eq('auth0_id', supabaseId)
       .single();
 
     if (userError || !userData) {
-      console.log('[PermissionsService.getPermissionContext] Usuário não encontrado');
+      console.log(
+        '[PermissionsService.getPermissionContext] Usuário não encontrado',
+      );
       return null;
     }
 
@@ -73,7 +82,11 @@ export class PermissionsService {
     const currentVersion = userData.permissions_version || 'default';
 
     // 2. Verificar cache
-    const cached = this.permissionsCache.get(supabaseId, tenantId, currentVersion);
+    const cached = this.permissionsCache.get(
+      supabaseId,
+      tenantId,
+      currentVersion,
+    );
     if (cached) {
       console.log('[PermissionsService.getPermissionContext] Cache HIT');
       return {
@@ -84,10 +97,13 @@ export class PermissionsService {
       };
     }
 
-    console.log('[PermissionsService.getPermissionContext] Cache MISS - calculando...');
+    console.log(
+      '[PermissionsService.getPermissionContext] Cache MISS - calculando...',
+    );
 
     // 3. Verificar se é owner
-    const { data: ownerData } = await this.supabase.getClient()
+    const { data: ownerData } = await this.supabase
+      .getClient()
       .from('tenant_owners')
       .select('id')
       .eq('user_id', userId)
@@ -102,11 +118,12 @@ export class PermissionsService {
       permissions = { '*': ['*'] };
     } else {
       // Obter permissões de roles, grupos e específicas em paralelo
-      const [rolePermissions, groupPermissions, specificPermissions] = await Promise.all([
-        this.getRolePermissions(userId, tenantId, schoolId),
-        this.getGroupPermissions(userId, tenantId, schoolId),
-        this.getSpecificPermissions(userId, tenantId, schoolId),
-      ]);
+      const [rolePermissions, groupPermissions, specificPermissions] =
+        await Promise.all([
+          this.getRolePermissions(userId, tenantId, schoolId),
+          this.getGroupPermissions(userId, tenantId, schoolId),
+          this.getSpecificPermissions(userId, tenantId, schoolId),
+        ]);
 
       permissions = {};
       this.mergePermissions(permissions, rolePermissions);
@@ -148,11 +165,14 @@ export class PermissionsService {
     });
 
     if (!userId) {
-      console.log('[PermissionsService.isOwner] Usuário não encontrado no banco');
+      console.log(
+        '[PermissionsService.isOwner] Usuário não encontrado no banco',
+      );
       return false;
     }
 
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('tenant_owners')
       .select('id')
       .eq('user_id', userId)
@@ -183,7 +203,8 @@ export class PermissionsService {
       return false;
     }
 
-    const query = this.supabase.getClient()
+    const query = this.supabase
+      .getClient()
       .from('user_roles')
       .select('id, roles!inner(slug)')
       .eq('user_id', userId)
@@ -210,7 +231,11 @@ export class PermissionsService {
     schoolId?: string,
   ): Promise<Record<string, string[]>> {
     // Usar método otimizado com cache
-    const context = await this.getPermissionContext(supabaseId, tenantId, schoolId);
+    const context = await this.getPermissionContext(
+      supabaseId,
+      tenantId,
+      schoolId,
+    );
     return context?.permissions || {};
   }
 
@@ -237,11 +262,12 @@ export class PermissionsService {
     }
 
     // Obter permissões dos cargos, grupos e específicas em paralelo
-    const [rolePermissions, groupPermissions, specificPermissions] = await Promise.all([
-      this.getRolePermissions(userId, tenantId, schoolId),
-      this.getGroupPermissions(userId, tenantId, schoolId),
-      this.getSpecificPermissions(userId, tenantId, schoolId),
-    ]);
+    const [rolePermissions, groupPermissions, specificPermissions] =
+      await Promise.all([
+        this.getRolePermissions(userId, tenantId, schoolId),
+        this.getGroupPermissions(userId, tenantId, schoolId),
+        this.getSpecificPermissions(userId, tenantId, schoolId),
+      ]);
 
     this.mergePermissions(permissions, rolePermissions);
     this.mergePermissions(permissions, groupPermissions);
@@ -277,9 +303,11 @@ export class PermissionsService {
       supabaseId,
       tenantId,
     });
-    
+
     if (isOwner) {
-      console.log('[PermissionsService.checkPermission] Usuário é owner, permitindo acesso');
+      console.log(
+        '[PermissionsService.checkPermission] Usuário é owner, permitindo acesso',
+      );
       return true;
     }
 
@@ -320,7 +348,8 @@ export class PermissionsService {
     tenantId: string,
     schoolId?: string,
   ): Promise<Record<string, string[]>> {
-    const query = this.supabase.getClient()
+    const query = this.supabase
+      .getClient()
       .from('user_roles')
       .select('roles!inner(default_permissions)')
       .eq('user_id', userId)
@@ -355,7 +384,8 @@ export class PermissionsService {
     tenantId: string,
     schoolId?: string,
   ): Promise<Record<string, string[]>> {
-    const query = this.supabase.getClient()
+    const query = this.supabase
+      .getClient()
       .from('user_permission_groups')
       .select('permission_groups!inner(permissions)')
       .eq('user_id', userId)
@@ -390,7 +420,8 @@ export class PermissionsService {
     tenantId: string,
     schoolId?: string,
   ): Promise<Record<string, string[]>> {
-    const query = this.supabase.getClient()
+    const query = this.supabase
+      .getClient()
       .from('user_permissions')
       .select('resource, action')
       .eq('user_id', userId)
@@ -448,7 +479,12 @@ export class PermissionsService {
     schoolId?: string,
   ): Promise<number> {
     const isOwner = await this.isOwner(supabaseId, tenantId);
-    return this.getUserHighestHierarchyWithOwner(supabaseId, tenantId, schoolId, isOwner);
+    return this.getUserHighestHierarchyWithOwner(
+      supabaseId,
+      tenantId,
+      schoolId,
+      isOwner,
+    );
   }
 
   /**
@@ -470,7 +506,8 @@ export class PermissionsService {
       return 999;
     }
 
-    const query = this.supabase.getClient()
+    const query = this.supabase
+      .getClient()
       .from('user_roles')
       .select('roles!inner(hierarchy_level)')
       .eq('user_id', userId)
@@ -502,14 +539,20 @@ export class PermissionsService {
     const crypto = await import('crypto');
     const newVersion = crypto.randomUUID();
 
-    const { error } = await this.supabase.getClient()
+    const { error } = await this.supabase
+      .getClient()
       .from('users')
       .update({ permissions_version: newVersion })
       .eq('id', userId);
 
     if (error) {
-      console.error('[PermissionsService] Erro ao atualizar permissions_version:', error);
-      throw new Error(`Erro ao invalidar versão de permissões: ${error.message}`);
+      console.error(
+        '[PermissionsService] Erro ao atualizar permissions_version:',
+        error,
+      );
+      throw new Error(
+        `Erro ao invalidar versão de permissões: ${error.message}`,
+      );
     }
 
     return newVersion;
@@ -526,7 +569,8 @@ export class PermissionsService {
       return null;
     }
 
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('users')
       .select('permissions_version')
       .eq('id', userId)

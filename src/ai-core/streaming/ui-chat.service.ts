@@ -43,7 +43,8 @@ export class UIChatService {
     options: UIChatOptions = {},
   ): Promise<void> {
     const provider = options.provider || this.aiConfig.getDefaultProvider();
-    const modelName = options.model || this.modelConfig.getProvider(provider)?.defaultModel;
+    const modelName =
+      options.model || this.modelConfig.getProvider(provider)?.defaultModel;
 
     if (!modelName) {
       throw new Error(`No model specified for provider ${provider}`);
@@ -51,7 +52,9 @@ export class UIChatService {
 
     const model = this.providerFactory.getModel(provider, modelName);
     if (!model) {
-      throw new Error(`Model ${modelName} not available for provider ${provider}`);
+      throw new Error(
+        `Model ${modelName} not available for provider ${provider}`,
+      );
     }
 
     const modelConfig = this.modelConfig.getModel(modelName);
@@ -87,8 +90,12 @@ export class UIChatService {
 
     // GPT-5 doesn't support temperature, topP, etc.
     if (!isGpt5) {
-      if (options.temperature !== undefined || modelConfig?.temperature !== undefined) {
-        streamOptions.temperature = options.temperature ?? modelConfig?.temperature ?? 0.7;
+      if (
+        options.temperature !== undefined ||
+        modelConfig?.temperature !== undefined
+      ) {
+        streamOptions.temperature =
+          options.temperature ?? modelConfig?.temperature ?? 0.7;
       }
     }
 
@@ -118,12 +125,17 @@ export class UIChatService {
           if (!streamOptions.headers) {
             streamOptions.headers = {};
           }
-          streamOptions.headers['anthropic-beta'] = 'interleaved-thinking-2025-05-14';
+          streamOptions.headers['anthropic-beta'] =
+            'interleaved-thinking-2025-05-14';
           this.logger.debug(`Enabled reasoning for ${modelName}`);
         }
       } else if (provider === 'openai') {
         // OpenAI reasoning (GPT-5, o1, o3-mini)
-        if (modelName.includes('gpt-5') || modelName.includes('o1') || modelName.includes('o3-mini')) {
+        if (
+          modelName.includes('gpt-5') ||
+          modelName.includes('o1') ||
+          modelName.includes('o3-mini')
+        ) {
           if (!streamOptions.providerOptions.openai) {
             streamOptions.providerOptions.openai = {};
           }
@@ -177,5 +189,4 @@ export class UIChatService {
       throw error;
     }
   }
-
 }

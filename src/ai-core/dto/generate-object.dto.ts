@@ -1,4 +1,12 @@
-import { IsString, IsOptional, IsEnum, IsNumber, Min, Max, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  Min,
+  Max,
+  IsObject,
+} from 'class-validator';
 
 export class GenerateObjectDto {
   @IsString()

@@ -42,7 +42,8 @@ export class SearchService {
       );
 
       // 1. Gerar embedding da query
-      const { embedding } = await this.embeddingService.generateEmbedding(query);
+      const { embedding } =
+        await this.embeddingService.generateEmbedding(query);
       const vectorStr = this.embeddingService.embeddingToVector(embedding);
 
       // 2. Chamar função RPC do Supabase
@@ -65,7 +66,7 @@ export class SearchService {
         if (category && row.category !== category) return false;
         if (tags && tags.length > 0) {
           const docTags = row.doc_tags || [];
-          if (!tags.some(tag => docTags.includes(tag))) return false;
+          if (!tags.some((tag) => docTags.includes(tag))) return false;
         }
         return true;
       });
@@ -104,11 +105,7 @@ export class SearchService {
     query: string,
     options: SearchOptions = {},
   ): Promise<SearchResultDto[]> {
-    const {
-      topK = SEARCH_CONFIG.DEFAULT_TOP_K,
-      category,
-      tags,
-    } = options;
+    const { topK = SEARCH_CONFIG.DEFAULT_TOP_K, category, tags } = options;
 
     try {
       this.logger.log(
@@ -117,7 +114,8 @@ export class SearchService {
       );
 
       // 1. Gerar embedding da query
-      const { embedding } = await this.embeddingService.generateEmbedding(query);
+      const { embedding } =
+        await this.embeddingService.generateEmbedding(query);
       const vectorStr = this.embeddingService.embeddingToVector(embedding);
 
       // 2. Chamar função RPC de busca híbr ida do Supabase
@@ -139,7 +137,7 @@ export class SearchService {
         if (category && row.doc_category !== category) return false;
         if (tags && tags.length > 0) {
           const docTags = row.doc_tags || [];
-          if (!tags.some(tag => docTags.includes(tag))) return false;
+          if (!tags.some((tag) => docTags.includes(tag))) return false;
         }
         return true;
       });
@@ -197,10 +195,7 @@ export class SearchService {
     }
 
     const formatted = results.map((r, i) => {
-      const parts = [
-        `[Resultado ${i + 1}]`,
-        `Documento: ${r.document.title}`,
-      ];
+      const parts = [`[Resultado ${i + 1}]`, `Documento: ${r.document.title}`];
 
       if (r.document.menuPath) {
         parts.push(`Menu: ${r.document.menuPath}`);

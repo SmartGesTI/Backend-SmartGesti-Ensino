@@ -12,11 +12,16 @@ export class ModelCacheService {
   /**
    * Cache de modelos disponíveis por provider
    */
-  getModels(provider: 'openai' | 'anthropic' | 'google'): ModelConfig[] | undefined {
+  getModels(
+    provider: 'openai' | 'anthropic' | 'google',
+  ): ModelConfig[] | undefined {
     return this.cache.get<ModelConfig[]>(`models:${provider}`);
   }
 
-  setModels(provider: 'openai' | 'anthropic' | 'google', models: ModelConfig[]): void {
+  setModels(
+    provider: 'openai' | 'anthropic' | 'google',
+    models: ModelConfig[],
+  ): void {
     this.cache.set(`models:${provider}`, models, { ttl: this.CACHE_TTL });
   }
 

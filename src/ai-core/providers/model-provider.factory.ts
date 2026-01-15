@@ -50,7 +50,9 @@ export class ModelProviderFactory {
     }
   }
 
-  getProvider(providerName: 'openai' | 'anthropic' | 'google'): IModelProvider | undefined {
+  getProvider(
+    providerName: 'openai' | 'anthropic' | 'google',
+  ): IModelProvider | undefined {
     return this.providers.get(providerName);
   }
 
@@ -65,7 +67,9 @@ export class ModelProviderFactory {
     }
 
     if (!provider.isAvailable()) {
-      this.logger.warn(`Provider ${providerName} is not available (missing API key)`);
+      this.logger.warn(
+        `Provider ${providerName} is not available (missing API key)`,
+      );
       return undefined;
     }
 
@@ -74,12 +78,16 @@ export class ModelProviderFactory {
 
   getAvailableProviders(): string[] {
     return Array.from(this.providers.keys()).filter((key) => {
-      const provider = this.providers.get(key as 'openai' | 'anthropic' | 'google');
+      const provider = this.providers.get(
+        key as 'openai' | 'anthropic' | 'google',
+      );
       return provider?.isAvailable();
     });
   }
 
-  isProviderAvailable(providerName: 'openai' | 'anthropic' | 'google'): boolean {
+  isProviderAvailable(
+    providerName: 'openai' | 'anthropic' | 'google',
+  ): boolean {
     const provider = this.getProvider(providerName);
     return provider?.isAvailable() || false;
   }

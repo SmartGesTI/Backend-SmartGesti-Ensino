@@ -19,16 +19,31 @@ export class AiCoreConfigService {
   constructor(private readonly configService: ConfigService) {
     this.config = {
       defaultProvider:
-        (this.configService.get<string>('AI_DEFAULT_PROVIDER') as 'openai' | 'anthropic' | 'google') ||
-        'openai',
-      defaultModel: this.configService.get<string>('AI_DEFAULT_MODEL') || 'gpt-5-mini',
-      enableStreaming: this.configService.get<string>('AI_ENABLE_STREAMING') !== 'false',
+        (this.configService.get<string>('AI_DEFAULT_PROVIDER') as
+          | 'openai'
+          | 'anthropic'
+          | 'google') || 'openai',
+      defaultModel:
+        this.configService.get<string>('AI_DEFAULT_MODEL') || 'gpt-5-mini',
+      enableStreaming:
+        this.configService.get<string>('AI_ENABLE_STREAMING') !== 'false',
       enableStructuredOutput:
-        this.configService.get<string>('AI_ENABLE_STRUCTURED_OUTPUT') !== 'false',
-      enableCache: this.configService.get<string>('AI_ENABLE_CACHE') !== 'false',
-      cacheTtl: parseInt(this.configService.get<string>('AI_CACHE_TTL') || '3600', 10),
-      maxRetries: parseInt(this.configService.get<string>('AI_MAX_RETRIES') || '3', 10),
-      timeout: parseInt(this.configService.get<string>('AI_TIMEOUT') || '60000', 10),
+        this.configService.get<string>('AI_ENABLE_STRUCTURED_OUTPUT') !==
+        'false',
+      enableCache:
+        this.configService.get<string>('AI_ENABLE_CACHE') !== 'false',
+      cacheTtl: parseInt(
+        this.configService.get<string>('AI_CACHE_TTL') || '3600',
+        10,
+      ),
+      maxRetries: parseInt(
+        this.configService.get<string>('AI_MAX_RETRIES') || '3',
+        10,
+      ),
+      timeout: parseInt(
+        this.configService.get<string>('AI_TIMEOUT') || '60000',
+        10,
+      ),
     };
   }
 

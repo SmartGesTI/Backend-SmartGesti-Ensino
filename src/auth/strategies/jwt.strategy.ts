@@ -23,8 +23,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any): Promise<CurrentUserPayload> {
-    console.log('[JwtStrategy] Validating token payload:', JSON.stringify(payload, null, 2));
-    
+    console.log(
+      '[JwtStrategy] Validating token payload:',
+      JSON.stringify(payload, null, 2),
+    );
+
     if (!payload.sub) {
       console.log('[JwtStrategy] Token missing sub claim');
       throw new UnauthorizedException('Invalid token payload: missing sub');
@@ -33,16 +36,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // Payload do Supabase: sub é o UUID do usuário
     const userId = payload.sub;
     const email = payload.email || '';
-    const name = payload.user_metadata?.full_name || payload.user_metadata?.name || '';
-    const picture = payload.user_metadata?.avatar_url || payload.user_metadata?.picture || '';
-    
+    const name =
+      payload.user_metadata?.full_name || payload.user_metadata?.name || '';
+    const picture =
+      payload.user_metadata?.avatar_url || payload.user_metadata?.picture || '';
+
     // Verificar se email está confirmado
     // Para usuários OAuth (Google, etc), considerar email como verificado
     // pois o provedor OAuth já faz essa verificação
-    const hasEmailConfirmed = payload.email_confirmed_at !== null && payload.email_confirmed_at !== undefined;
-    const isOAuthUser = payload.app_metadata?.provider !== 'email' || 
-                       payload.user_metadata?.provider === 'google' ||
-                       payload.iss?.includes('accounts.google.com');
+    const hasEmailConfirmed =
+      payload.email_confirmed_at !== null &&
+      payload.email_confirmed_at !== undefined;
+    const isOAuthUser =
+      payload.app_metadata?.provider !== 'email' ||
+      payload.user_metadata?.provider === 'google' ||
+      payload.iss?.includes('accounts.google.com');
     const emailVerified = hasEmailConfirmed || isOAuthUser;
 
     console.log('[JwtStrategy] Token validated successfully for:', userId);

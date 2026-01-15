@@ -34,7 +34,9 @@ export class ModelProviderConfigService {
     if (openaiApiKey) {
       this.providers.set('openai', {
         apiKey: openaiApiKey,
-        defaultModel: this.configService.get<string>('OPENAI_DEFAULT_MODEL') || 'gpt-5-mini',
+        defaultModel:
+          this.configService.get<string>('OPENAI_DEFAULT_MODEL') ||
+          'gpt-5-mini',
         models: [
           {
             name: 'gpt-5-mini',
@@ -85,7 +87,9 @@ export class ModelProviderConfigService {
     if (anthropicApiKey) {
       this.providers.set('anthropic', {
         apiKey: anthropicApiKey,
-        defaultModel: this.configService.get<string>('ANTHROPIC_DEFAULT_MODEL') || 'claude-3-5-sonnet-20241022',
+        defaultModel:
+          this.configService.get<string>('ANTHROPIC_DEFAULT_MODEL') ||
+          'claude-3-5-sonnet-20241022',
         models: [
           {
             name: 'claude-3-5-sonnet-20241022',
@@ -118,7 +122,9 @@ export class ModelProviderConfigService {
     if (googleApiKey) {
       this.providers.set('google', {
         apiKey: googleApiKey,
-        defaultModel: this.configService.get<string>('GOOGLE_DEFAULT_MODEL') || 'gemini-1.5-pro',
+        defaultModel:
+          this.configService.get<string>('GOOGLE_DEFAULT_MODEL') ||
+          'gemini-1.5-pro',
         models: [
           {
             name: 'gemini-1.5-pro',
@@ -147,7 +153,9 @@ export class ModelProviderConfigService {
     }
   }
 
-  getProvider(provider: 'openai' | 'anthropic' | 'google'): ProviderConfig | undefined {
+  getProvider(
+    provider: 'openai' | 'anthropic' | 'google',
+  ): ProviderConfig | undefined {
     return this.providers.get(provider);
   }
 

@@ -28,20 +28,25 @@ export class UsersController {
       // IMPORTANTE: Se o JWT indica email não verificado, buscar dados atualizados do Supabase
       // Isso resolve o problema de JWT desatualizado após verificação OTP
       let emailVerified = user.email_verified;
-      
+
       if (!emailVerified) {
         try {
           // Buscar usuário diretamente do Supabase para verificar status atualizado
           const supabase = this.supabaseService.getClient();
-          const { data: { user: supabaseUserData }, error } = await supabase.auth.admin.getUserById(user.sub);
-          
+          const {
+            data: { user: supabaseUserData },
+            error,
+          } = await supabase.auth.admin.getUserById(user.sub);
+
           if (!error && supabaseUserData) {
             // Verificar se email está confirmado no Supabase
-            const hasEmailConfirmed = supabaseUserData.email_confirmed_at !== null && 
-                                     supabaseUserData.email_confirmed_at !== undefined;
-            const isOAuthUser = supabaseUserData.app_metadata?.provider !== 'email' ||
-                               supabaseUserData.user_metadata?.provider === 'google';
-            
+            const hasEmailConfirmed =
+              supabaseUserData.email_confirmed_at !== null &&
+              supabaseUserData.email_confirmed_at !== undefined;
+            const isOAuthUser =
+              supabaseUserData.app_metadata?.provider !== 'email' ||
+              supabaseUserData.user_metadata?.provider === 'google';
+
             emailVerified = hasEmailConfirmed || isOAuthUser;
           }
         } catch (error) {
@@ -57,7 +62,10 @@ export class UsersController {
         picture: user.picture,
         email_verified: emailVerified, // Usar valor atualizado
       };
-      dbUser = await this.usersService.syncUserFromSupabase(supabaseUser, subdomain);
+      dbUser = await this.usersService.syncUserFromSupabase(
+        supabaseUser,
+        subdomain,
+      );
     }
 
     return dbUser;
@@ -78,7 +86,7 @@ export class UsersController {
     @Body() dto: CompleteProfileDto,
   ) {
     const updatedUser = await this.usersService.completeProfile(user.sub, dto);
-    
+
     return {
       success: true,
       message: 'Perfil completado com sucesso',

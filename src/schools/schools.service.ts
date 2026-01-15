@@ -1,4 +1,10 @@
-import { Injectable, ForbiddenException, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoggerService } from '../common/logger/logger.service';
 import { School } from '../common/types';
@@ -41,11 +47,11 @@ export class SchoolsService {
     return data as School;
   }
 
-  async getSchoolBySlug(slug: string, tenantId?: string): Promise<School | null> {
-    let query = this.supabase
-      .from('schools')
-      .select('*')
-      .eq('slug', slug);
+  async getSchoolBySlug(
+    slug: string,
+    tenantId?: string,
+  ): Promise<School | null> {
+    let query = this.supabase.from('schools').select('*').eq('slug', slug);
 
     if (tenantId) {
       query = query.eq('tenant_id', tenantId);
@@ -120,7 +126,9 @@ export class SchoolsService {
           error: membersError.message,
         },
       );
-      throw new Error(`Failed to get school memberships: ${membersError.message}`);
+      throw new Error(
+        `Failed to get school memberships: ${membersError.message}`,
+      );
     }
 
     if (!memberships || memberships.length === 0) {
@@ -182,7 +190,11 @@ export class SchoolsService {
     return data as School;
   }
 
-  async setCurrentSchool(userId: string, schoolId: string, tenantId: string): Promise<void> {
+  async setCurrentSchool(
+    userId: string,
+    schoolId: string,
+    tenantId: string,
+  ): Promise<void> {
     // A validação de que a escola pertence ao tenant já foi feita no controller
     // Aqui apenas atualizamos os dados
 
@@ -197,16 +209,20 @@ export class SchoolsService {
     // Se não é membro, adicionar automaticamente
     if (!membership) {
       await this.addUserToSchool(userId, schoolId, 'user');
-      this.logger.log('User added to school', 'SchoolsService', { userId, schoolId, tenantId });
+      this.logger.log('User added to school', 'SchoolsService', {
+        userId,
+        schoolId,
+        tenantId,
+      });
     }
 
     // Atualizar current_school_id e tenant_id do usuário
     const { error: updateError } = await this.supabase
       .from('users')
-      .update({ 
-        current_school_id: schoolId, 
+      .update({
+        current_school_id: schoolId,
         tenant_id: tenantId, // Sempre atualizar para garantir isolamento
-        updated_at: new Date().toISOString() 
+        updated_at: new Date().toISOString(),
       })
       .eq('id', userId);
 
@@ -224,10 +240,17 @@ export class SchoolsService {
       throw new Error(`Failed to set current school: ${updateError.message}`);
     }
 
-    this.logger.log('Current school updated', 'SchoolsService', { userId, schoolId });
+    this.logger.log('Current school updated', 'SchoolsService', {
+      userId,
+      schoolId,
+    });
   }
 
-  async addUserToSchool(userId: string, schoolId: string, role: string = 'user'): Promise<void> {
+  async addUserToSchool(
+    userId: string,
+    schoolId: string,
+    role: string = 'user',
+  ): Promise<void> {
     // IMPORTANTE: Validações de regras de negócio
     // 1. Verificar se usuário é owner - owners podem estar em múltiplas escolas
     const { data: school } = await this.supabase
@@ -268,7 +291,7 @@ export class SchoolsService {
         if (existingSchools && existingSchools.length > 0) {
           // Aluno já está em uma escola, verificar se é a mesma
           const isSameSchool = existingSchools.some(
-            (es: any) => es.school_id === schoolId
+            (es: any) => es.school_id === schoolId,
           );
 
           if (!isSameSchool) {
@@ -323,23 +346,27 @@ export class SchoolsService {
   private generateSlug(name: string, tenantId: string): string {
     // Converter para minúsculas
     let slug = name.toLowerCase();
-    
+
     // Remover acentos
     slug = slug.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    
+
     // Substituir espaços e caracteres especiais por hífen
     slug = slug.replace(/[^a-z0-9]+/g, '-');
-    
+
     // Remover hífens no início e fim
     slug = slug.replace(/^-+|-+$/g, '');
-    
+
     return slug;
   }
 
   /**
    * Garante que o slug seja único dentro do tenant
    */
-  private async ensureUniqueSlug(baseSlug: string, tenantId: string, excludeSchoolId?: string): Promise<string> {
+  private async ensureUniqueSlug(
+    baseSlug: string,
+    tenantId: string,
+    excludeSchoolId?: string,
+  ): Promise<string> {
     let slug = baseSlug;
     let counter = 1;
 
@@ -367,7 +394,10 @@ export class SchoolsService {
     }
   }
 
-  async createSchool(tenantId: string, createSchoolDto: CreateSchoolDto): Promise<School> {
+  async createSchool(
+    tenantId: string,
+    createSchoolDto: CreateSchoolDto,
+  ): Promise<School> {
     // Validar campos obrigatórios
     if (!createSchoolDto.name) {
       throw new BadRequestException('name is required');
@@ -392,7 +422,10 @@ export class SchoolsService {
     }
 
     // Validar formato de Estado se fornecido
-    if (createSchoolDto.endereco_estado && createSchoolDto.endereco_estado.length !== 2) {
+    if (
+      createSchoolDto.endereco_estado &&
+      createSchoolDto.endereco_estado.length !== 2
+    ) {
       throw new BadRequestException('Estado (UF) must have 2 characters');
     }
 
@@ -416,12 +449,18 @@ export class SchoolsService {
       // Verificar se é erro de duplicação
       if (error.code === '23505') {
         if (error.message.includes('code')) {
-          throw new ConflictException(`School with code '${createSchoolDto.code}' already exists in this tenant`);
+          throw new ConflictException(
+            `School with code '${createSchoolDto.code}' already exists in this tenant`,
+          );
         }
         if (error.message.includes('cnpj')) {
-          throw new ConflictException(`School with CNPJ '${createSchoolDto.cnpj}' already exists in this tenant`);
+          throw new ConflictException(
+            `School with CNPJ '${createSchoolDto.cnpj}' already exists in this tenant`,
+          );
         }
-        throw new ConflictException('School with this information already exists');
+        throw new ConflictException(
+          'School with this information already exists',
+        );
       }
 
       this.logger.error(
@@ -445,7 +484,11 @@ export class SchoolsService {
     return school;
   }
 
-  async updateSchool(id: string, tenantId: string, updateSchoolDto: UpdateSchoolDto): Promise<School> {
+  async updateSchool(
+    id: string,
+    tenantId: string,
+    updateSchoolDto: UpdateSchoolDto,
+  ): Promise<School> {
     // Verificar se a escola existe e pertence ao tenant
     const existingSchool = await this.getSchoolById(id);
     if (!existingSchool) {
@@ -475,7 +518,10 @@ export class SchoolsService {
     }
 
     // Validar formato de Estado se fornecido
-    if (updateSchoolDto.endereco_estado && updateSchoolDto.endereco_estado.length !== 2) {
+    if (
+      updateSchoolDto.endereco_estado &&
+      updateSchoolDto.endereco_estado.length !== 2
+    ) {
       throw new BadRequestException('Estado (UF) must have 2 characters');
     }
 
@@ -500,12 +546,18 @@ export class SchoolsService {
       // Verificar se é erro de duplicação
       if (error.code === '23505') {
         if (error.message.includes('code')) {
-          throw new ConflictException(`School with code '${updateSchoolDto.code}' already exists in this tenant`);
+          throw new ConflictException(
+            `School with code '${updateSchoolDto.code}' already exists in this tenant`,
+          );
         }
         if (error.message.includes('cnpj')) {
-          throw new ConflictException(`School with CNPJ '${updateSchoolDto.cnpj}' already exists in this tenant`);
+          throw new ConflictException(
+            `School with CNPJ '${updateSchoolDto.cnpj}' already exists in this tenant`,
+          );
         }
-        throw new ConflictException('School with this information already exists');
+        throw new ConflictException(
+          'School with this information already exists',
+        );
       }
 
       this.logger.error(
@@ -539,10 +591,7 @@ export class SchoolsService {
       throw new ForbiddenException('School does not belong to this tenant');
     }
 
-    const { error } = await this.supabase
-      .from('schools')
-      .delete()
-      .eq('id', id);
+    const { error } = await this.supabase.from('schools').delete().eq('id', id);
 
     if (error) {
       this.logger.error(

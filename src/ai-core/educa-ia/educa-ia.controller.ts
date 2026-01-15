@@ -73,28 +73,27 @@ export class EducaIAController {
       );
 
       // Stream using the service (user data from JWT context - no DB query needed)
-      await this.educaIAService.streamChat(
-        dto.messages,
-        res,
-        {
-          tenantId,
-          supabaseId,
-          schoolId,
-          schoolSlug: dto.schoolSlug, // Slug from frontend (avoids DB query)
-          model: dto.model,
-          provider: dto.provider,
-          responseMode: dto.responseMode || 'fast',
-          sendReasoning: dto.sendReasoning,
-          conversationId: dto.conversationId,
-          temperature: dto.temperature,
-          maxTokens: dto.maxTokens,
-          requestOrigin,
-          // Inject user context from JWT (avoids database query)
-          userName: user?.user_metadata?.full_name || user?.name || user?.email?.split('@')[0],
-          userEmail: user?.email,
-          userRole: user?.user_metadata?.role || user?.role,
-        },
-      );
+      await this.educaIAService.streamChat(dto.messages, res, {
+        tenantId,
+        supabaseId,
+        schoolId,
+        schoolSlug: dto.schoolSlug, // Slug from frontend (avoids DB query)
+        model: dto.model,
+        provider: dto.provider,
+        responseMode: dto.responseMode || 'fast',
+        sendReasoning: dto.sendReasoning,
+        conversationId: dto.conversationId,
+        temperature: dto.temperature,
+        maxTokens: dto.maxTokens,
+        requestOrigin,
+        // Inject user context from JWT (avoids database query)
+        userName:
+          user?.user_metadata?.full_name ||
+          user?.name ||
+          user?.email?.split('@')[0],
+        userEmail: user?.email,
+        userRole: user?.user_metadata?.role || user?.role,
+      });
     } catch (error: any) {
       this.logger.error(`EducaIA stream error: ${error.message}`, error.stack);
       if (!res.headersSent) {
@@ -158,7 +157,10 @@ export class EducaIAController {
 
       return conversations;
     } catch (error: any) {
-      this.logger.error(`List conversations error: ${error.message}`, error.stack);
+      this.logger.error(
+        `List conversations error: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -188,7 +190,10 @@ export class EducaIAController {
 
       return history;
     } catch (error: any) {
-      this.logger.error(`Get conversation error: ${error.message}`, error.stack);
+      this.logger.error(
+        `Get conversation error: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -218,7 +223,10 @@ export class EducaIAController {
 
       return { success: true, message: 'Conversa deletada com sucesso!' };
     } catch (error: any) {
-      this.logger.error(`Delete conversation error: ${error.message}`, error.stack);
+      this.logger.error(
+        `Delete conversation error: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -228,7 +236,8 @@ export class EducaIAController {
    */
   @Post('tool-approval')
   async submitToolApproval(
-    @Body() dto: { toolCallId: string; approved: boolean; conversationId?: string },
+    @Body()
+    dto: { toolCallId: string; approved: boolean; conversationId?: string },
     @Req() req: Request,
     @Headers('x-tenant-id') tenantId?: string,
   ) {

@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { LoggerService } from './common/logger/logger.service';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
@@ -18,6 +19,18 @@ async function bootstrap() {
 
   // Adicionar filtro global de exceções para capturar TODOS os erros
   app.useGlobalFilters(new AllExceptionsFilter(logger));
+
+  // Adicionar ValidationPipe global para validação de DTOs
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
 
   // CORS configuration
   app.enableCors({

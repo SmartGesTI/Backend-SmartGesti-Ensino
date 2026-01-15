@@ -105,11 +105,7 @@ export class RolesController {
     @Body() assignRoleDto: AssignRoleDto,
     @Request() req: any,
   ) {
-    return this.rolesService.assignRole(
-      tenantId,
-      assignRoleDto,
-      req.user.id,
-    );
+    return this.rolesService.assignRole(tenantId, assignRoleDto, req.user.id);
   }
 
   /**

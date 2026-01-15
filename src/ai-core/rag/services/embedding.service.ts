@@ -58,11 +58,11 @@ export class EmbeddingService {
 
     try {
       const results: EmbeddingResult[] = [];
-      
+
       // Dividir em batches para respeitar limites da API
       for (let i = 0; i < texts.length; i += EMBEDDING_CONFIG.BATCH_SIZE) {
         const batch = texts.slice(i, i + EMBEDDING_CONFIG.BATCH_SIZE);
-        
+
         this.logger.log(
           `Gerando embeddings: batch ${Math.floor(i / EMBEDDING_CONFIG.BATCH_SIZE) + 1}/${Math.ceil(texts.length / EMBEDDING_CONFIG.BATCH_SIZE)}`,
           'EmbeddingService',
@@ -75,7 +75,9 @@ export class EmbeddingService {
         });
 
         // Calcular tokens por texto (aproximado)
-        const tokensPerText = Math.floor(response.usage.total_tokens / batch.length);
+        const tokensPerText = Math.floor(
+          response.usage.total_tokens / batch.length,
+        );
 
         for (const data of response.data) {
           results.push({

@@ -49,7 +49,9 @@ export class NavigationTool {
       }),
       execute: async ({ query, category }) => {
         try {
-          this.logger.debug(`Navigation search: "${query}" (category: ${category || 'all'})`);
+          this.logger.debug(
+            `Navigation search: "${query}" (category: ${category || 'all'})`,
+          );
 
           // Search in RAG documents for pages with routes
           const client = this.supabase.getClient();
@@ -80,12 +82,15 @@ export class NavigationTool {
 
           // Simple text matching for relevant pages
           const queryLower = query.toLowerCase();
-          const queryWords = queryLower.split(/\s+/).filter((w) => w.length > 2);
+          const queryWords = queryLower
+            .split(/\s+/)
+            .filter((w) => w.length > 2);
 
           const scoredDocs = documents
             .map((doc) => {
               let score = 0;
-              const searchText = `${doc.title} ${doc.menu_path || ''} ${(doc.tags || []).join(' ')}`.toLowerCase();
+              const searchText =
+                `${doc.title} ${doc.menu_path || ''} ${(doc.tags || []).join(' ')}`.toLowerCase();
 
               // Check each word
               for (const word of queryWords) {
@@ -117,26 +122,34 @@ export class NavigationTool {
           // Build suggestions with complete URLs
           const suggestions = scoredDocs.map((doc) => {
             // Build complete URL using UrlBuilderService
-            let fullUrl: string | undefined = this.urlBuilder.buildFullUrl(doc.route_pattern, {
-              schoolSlug: context.schoolSlug,
-              requestOrigin: context.requestOrigin,
-            });
-            
+            let fullUrl: string | undefined = this.urlBuilder.buildFullUrl(
+              doc.route_pattern,
+              {
+                schoolSlug: context.schoolSlug,
+                requestOrigin: context.requestOrigin,
+              },
+            );
+
             // Also build the resolved route (without domain) for internal navigation
             let resolvedRoute: string | undefined = doc.route_pattern;
             if (context.schoolSlug && resolvedRoute) {
-              resolvedRoute = resolvedRoute.replace(':slug', context.schoolSlug);
+              resolvedRoute = resolvedRoute.replace(
+                ':slug',
+                context.schoolSlug,
+              );
             }
-            
+
             // SAFETY: Never return URLs with unresolved :slug
             if (fullUrl?.includes(':slug')) {
-              this.logger.warn(`URL contains unresolved :slug - schoolSlug: ${context.schoolSlug}`);
+              this.logger.warn(
+                `URL contains unresolved :slug - schoolSlug: ${context.schoolSlug}`,
+              );
               fullUrl = undefined; // Don't return broken URLs
             }
             if (resolvedRoute?.includes(':slug')) {
               resolvedRoute = undefined;
             }
-            
+
             return {
               title: doc.title,
               url: fullUrl, // URL completa para o usuário clicar
@@ -152,7 +165,10 @@ export class NavigationTool {
             suggestions,
           };
         } catch (error: any) {
-          this.logger.error(`Navigation tool error: ${error.message}`, error.stack);
+          this.logger.error(
+            `Navigation tool error: ${error.message}`,
+            error.stack,
+          );
           throw new Error(`Erro ao buscar páginas: ${error.message}`);
         }
       },

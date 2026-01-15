@@ -30,10 +30,14 @@ export class DatabaseTool {
       inputSchema: z.object({
         query: z
           .string()
-          .describe('Query SQL SELECT a ser executada. Deve começar com SELECT e não pode conter comandos perigosos.'),
+          .describe(
+            'Query SQL SELECT a ser executada. Deve começar com SELECT e não pode conter comandos perigosos.',
+          ),
         description: z
           .string()
-          .describe('Descrição do que você está tentando descobrir com esta query (para validação e logging)'),
+          .describe(
+            'Descrição do que você está tentando descobrir com esta query (para validação e logging)',
+          ),
       }),
       // Require approval for database queries (sensitive operation)
       needsApproval: async ({ query, description }) => {
@@ -47,7 +51,9 @@ export class DatabaseTool {
           // Validate query
           const trimmedQuery = query.trim().toUpperCase();
           if (!trimmedQuery.startsWith('SELECT')) {
-            throw new Error('Por segurança, apenas queries SELECT são permitidas');
+            throw new Error(
+              'Por segurança, apenas queries SELECT são permitidas',
+            );
           }
 
           // Validate no dangerous keywords
@@ -105,7 +111,10 @@ export class DatabaseTool {
             description,
           };
         } catch (error: any) {
-          this.logger.error(`Database tool error: ${error.message}`, error.stack);
+          this.logger.error(
+            `Database tool error: ${error.message}`,
+            error.stack,
+          );
           throw new Error(`Erro ao executar query: ${error.message}`);
         }
       },
@@ -114,7 +123,8 @@ export class DatabaseTool {
         if (!output.success) {
           return {
             type: 'text',
-            value: output.message || 'Erro ao executar query no banco de dados.',
+            value:
+              output.message || 'Erro ao executar query no banco de dados.',
           };
         }
 
@@ -127,13 +137,18 @@ export class DatabaseTool {
 
         // Format results concisely
         const dataPreview = Array.isArray(output.data)
-          ? output.data.slice(0, 5).map((row: any) => JSON.stringify(row)).join('\n')
+          ? output.data
+              .slice(0, 5)
+              .map((row: any) => JSON.stringify(row))
+              .join('\n')
           : JSON.stringify(output.data);
 
         return {
           type: 'text',
           value: `Query executada com sucesso. Encontrados ${output.rowCount} resultado(s) para "${input.description}":\n\n${dataPreview}${
-            output.rowCount > 5 ? `\n\n(mostrando 5 de ${output.rowCount} resultados)` : ''
+            output.rowCount > 5
+              ? `\n\n(mostrando 5 de ${output.rowCount} resultados)`
+              : ''
           }`,
         };
       },

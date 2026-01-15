@@ -72,7 +72,7 @@ export class RagController {
     @Res() res: Response,
   ): void {
     const requestId = `rag-${Date.now()}`;
-    
+
     console.log(`[${requestId}] [RagController] Stream request:`, {
       question: query.question?.substring(0, 50),
       tenantId,
@@ -102,7 +102,10 @@ export class RagController {
         res.write(`data: ${data}\n\n`);
       },
       error: (error: any) => {
-        console.error(`[${requestId}] [RagController] Stream error:`, error.message);
+        console.error(
+          `[${requestId}] [RagController] Stream error:`,
+          error.message,
+        );
         const errorData = JSON.stringify({
           type: 'error',
           data: { message: error.message || 'Erro desconhecido' },
@@ -280,8 +283,8 @@ export class RagController {
   @Post('ingest/directory')
   async ingestDirectory(@Body() body: { path: string }) {
     const results = await this.ingestionService.ingestDirectory(body.path);
-    
-    const successful = results.filter(r => r.success).length;
+
+    const successful = results.filter((r) => r.success).length;
     const totalChunks = results.reduce((sum, r) => sum + r.chunksCreated, 0);
 
     return {
@@ -300,8 +303,8 @@ export class RagController {
   @Post('reindex')
   async reindex(@Body() body: { path: string }) {
     const results = await this.ingestionService.reindexAll(body.path);
-    
-    const successful = results.filter(r => r.success).length;
+
+    const successful = results.filter((r) => r.success).length;
     const totalChunks = results.reduce((sum, r) => sum + r.chunksCreated, 0);
 
     return {

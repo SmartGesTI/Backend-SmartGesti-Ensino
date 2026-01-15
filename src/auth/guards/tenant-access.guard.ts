@@ -50,11 +50,10 @@ export class TenantAccessGuard implements CanActivate {
         .single();
 
       if (userError || !dbUser) {
-        this.logger.warn(
-          'User not found in database',
-          'TenantAccessGuard',
-          { supabaseId, tenantId },
-        );
+        this.logger.warn('User not found in database', 'TenantAccessGuard', {
+          supabaseId,
+          tenantId,
+        });
         throw new UnauthorizedException('Usuário não encontrado no sistema');
       }
 
@@ -151,9 +150,7 @@ export class TenantAccessGuard implements CanActivate {
         { supabaseId, tenantId, error: error.message },
       );
 
-      throw new ForbiddenException(
-        'Erro ao validar acesso à instituição',
-      );
+      throw new ForbiddenException('Erro ao validar acesso à instituição');
     }
   }
 }

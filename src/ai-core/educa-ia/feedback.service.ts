@@ -46,7 +46,10 @@ export class FeedbackService {
         `Feedback saved: ${data.feedbackType} for message ${data.messageId}`,
       );
     } catch (error: any) {
-      this.logger.error(`Failed to save feedback: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to save feedback: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -95,7 +98,9 @@ export class FeedbackService {
         .limit(10);
 
       if (recentError) {
-        this.logger.error(`Error getting recent feedback: ${recentError.message}`);
+        this.logger.error(
+          `Error getting recent feedback: ${recentError.message}`,
+        );
       }
 
       return {
@@ -104,7 +109,10 @@ export class FeedbackService {
         recentFeedback: recentFeedback || [],
       };
     } catch (error: any) {
-      this.logger.error(`Error getting feedback stats: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error getting feedback stats: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -144,7 +152,10 @@ export class FeedbackService {
         context: item.context_used,
       }));
     } catch (error: any) {
-      this.logger.error(`Error exporting for fine-tuning: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error exporting for fine-tuning: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
