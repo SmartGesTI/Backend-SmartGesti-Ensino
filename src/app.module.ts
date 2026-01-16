@@ -84,6 +84,12 @@ import { ReportFeedbackModule } from './report-feedback/report-feedback.module';
 import { LeaderboardDefinitionsModule } from './leaderboard-definitions/leaderboard-definitions.module';
 import { LeaderboardSnapshotsModule } from './leaderboard-snapshots/leaderboard-snapshots.module';
 import { LeaderboardEntriesModule } from './leaderboard-entries/leaderboard-entries.module';
+// Sprint 10 - Calendário Escolar
+import { CalendarEventTypesModule } from './calendar-event-types/calendar-event-types.module';
+import { CalendarBlueprintsModule } from './calendar-blueprints/calendar-blueprints.module';
+import { AcademicCalendarsModule } from './academic-calendars/academic-calendars.module';
+// Estrutura Acadêmica (Dashboard Otimizado)
+import { AcademicStructureModule } from './academic-structure/academic-structure.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { CacheModule } from './common/cache/cache.module';
 import { ServicesModule } from './common/services/services.module';
@@ -181,6 +187,12 @@ import { TenantAccessGuard } from './auth/guards/tenant-access.guard';
     LeaderboardDefinitionsModule,
     LeaderboardSnapshotsModule,
     LeaderboardEntriesModule,
+    // Sprint 10 - Calendário Escolar
+    CalendarEventTypesModule,
+    CalendarBlueprintsModule,
+    AcademicCalendarsModule,
+    // Estrutura Acadêmica (Dashboard Otimizado)
+    AcademicStructureModule,
   ],
   controllers: [AppController],
   providers: [
