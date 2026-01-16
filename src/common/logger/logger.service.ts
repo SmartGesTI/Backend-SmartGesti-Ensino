@@ -9,9 +9,20 @@ export enum LogLevel {
   VERBOSE = 'verbose',
 }
 
+// Contexts do NestJS que são muito verbosos durante o bootstrap
+const MUTED_CONTEXTS = ['RouterExplorer', 'RoutesResolver', 'InstanceLoader'];
+
 @Injectable()
 export class LoggerService implements NestLoggerService {
   private winstonLogger: winston.Logger;
+
+  /**
+   * Verifica se o context deve ser silenciado
+   */
+  private shouldMute(context?: string): boolean {
+    if (!context) return false;
+    return MUTED_CONTEXTS.includes(context);
+  }
 
   constructor() {
     this.winstonLogger = winston.createLogger({
@@ -52,6 +63,8 @@ export class LoggerService implements NestLoggerService {
   }
 
   log(message: string, context?: string, meta?: Record<string, any>) {
+    // Silencia logs verbosos do bootstrap do NestJS
+    if (this.shouldMute(context)) return;
     this.winstonLogger.info(message, { context, ...meta });
   }
 

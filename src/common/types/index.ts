@@ -17,6 +17,9 @@ export * from './pre-enrollment.types';
 // Sprint 9 - Insights & Reports (arquivo separado)
 export * from './insights-reports.types';
 
+// Sprint 10 - Calendário Escolar (arquivo separado)
+export * from './calendar.types';
+
 // Nota: Os arquivos abaixo são módulos separados para organização futura.
 // Eles re-exportam tipos que também estão em academic.types.ts.
 // Use imports diretos quando precisar apenas de um domínio específico:

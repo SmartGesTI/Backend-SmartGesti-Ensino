@@ -350,7 +350,7 @@ export type TimelineEventType =
 
 export interface TimelineEvent {
   id: string;
-  event_type: TimelineEventType | string;
+  event_type: TimelineEventType;
   occurred_at: string;
   actor_type: ActorType;
   actor_id: string | null;
