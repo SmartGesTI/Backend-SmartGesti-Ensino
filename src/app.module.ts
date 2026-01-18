@@ -86,6 +86,7 @@ import { LeaderboardSnapshotsModule } from './leaderboard-snapshots/leaderboard-
 import { LeaderboardEntriesModule } from './leaderboard-entries/leaderboard-entries.module';
 // Sprint 10 - Calendário Escolar
 import { CalendarEventTypesModule } from './calendar-event-types/calendar-event-types.module';
+import { CalendarDayTypesModule } from './calendar-day-types/calendar-day-types.module';
 import { CalendarBlueprintsModule } from './calendar-blueprints/calendar-blueprints.module';
 import { AcademicCalendarsModule } from './academic-calendars/academic-calendars.module';
 // Estrutura Acadêmica (Dashboard Otimizado)
@@ -189,6 +190,7 @@ import { TenantAccessGuard } from './auth/guards/tenant-access.guard';
     LeaderboardEntriesModule,
     // Sprint 10 - Calendário Escolar
     CalendarEventTypesModule,
+    CalendarDayTypesModule,
     CalendarBlueprintsModule,
     AcademicCalendarsModule,
     // Estrutura Acadêmica (Dashboard Otimizado)

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AcademicCalendarsController } from './academic-calendars.controller';
 import { AcademicCalendarsService } from './academic-calendars.service';
 import { AcademicCalendarAuditService } from './academic-calendar-audit.service';
+import { CalendarDerivationService } from './calendar-derivation.service';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { LoggerModule } from '../common/logger/logger.module';
 import { ServicesModule } from '../common/services/services.module';
@@ -19,7 +20,15 @@ import { CalendarBlueprintsModule } from '../calendar-blueprints/calendar-bluepr
     CalendarBlueprintsModule,
   ],
   controllers: [AcademicCalendarsController],
-  providers: [AcademicCalendarsService, AcademicCalendarAuditService],
-  exports: [AcademicCalendarsService, AcademicCalendarAuditService],
+  providers: [
+    AcademicCalendarsService,
+    AcademicCalendarAuditService,
+    CalendarDerivationService,
+  ],
+  exports: [
+    AcademicCalendarsService,
+    AcademicCalendarAuditService,
+    CalendarDerivationService,
+  ],
 })
 export class AcademicCalendarsModule {}

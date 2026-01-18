@@ -43,6 +43,64 @@ export type CalendarScopeType =
   | 'grade_level'
   | 'class_group';
 
+export type DayTypeShape = 'square' | 'rounded' | 'circle' | 'diamond';
+
+export type DayTypeBorderStyle = 'solid' | 'dashed';
+
+// ============================================
+// Configuracao Visual de Tipos de Dia
+// ============================================
+
+export interface DayTypeDisplayConfig {
+  background_color: string;
+  text_color: string;
+  shape: DayTypeShape;
+  border: {
+    enabled: boolean;
+    color: string;
+    style: DayTypeBorderStyle;
+  };
+}
+
+// ============================================
+// Tipos de Dia (Customizaveis)
+// ============================================
+
+export interface CalendarDayType extends AuditFields, SoftDeleteFields {
+  id: string;
+  tenant_id: string | null;
+  school_id: string | null;
+  slug: string;
+  name: string;
+  description: string | null;
+  is_system_type: boolean;
+  affects_instruction: boolean;
+  is_shared: boolean;
+  created_by_school_id: string | null;
+  display_config: DayTypeDisplayConfig;
+  order_index: number;
+  is_visible_in_legend: boolean;
+}
+
+export interface CalendarDayTypeUsage {
+  id: string;
+  day_type_id: string;
+  school_id: string;
+  calendar_id: string;
+  first_used_at: string;
+}
+
+export interface CalendarDayTypeUsageSummary {
+  day_type_id: string;
+  slug: string;
+  name: string;
+  created_by_school_id: string | null;
+  created_by_school_name: string | null;
+  total_schools_using: number;
+  other_schools_using: number;
+  other_school_names: string[] | null;
+}
+
 // ============================================
 // Tipos de Evento
 // ============================================
@@ -135,6 +193,7 @@ export interface AcademicCalendarDay extends AuditFields, SoftDeleteFields {
   day_date: string;
   day_kind: CalendarDayKind;
   is_instructional: boolean;
+  day_type_id: string | null;
   source_blueprint_day_id: string | null;
   is_override: boolean;
   override_reason: string | null;
@@ -148,8 +207,11 @@ export interface AcademicCalendarEvent extends AuditFields, SoftDeleteFields {
   calendar_id: string;
   event_type_id: string | null;
   title: string;
+  description: string | null;
   start_date: string;
   end_date: string;
+  start_time: string | null;
+  end_time: string | null;
   is_all_day: boolean;
   affects_instruction: boolean;
   visibility: CalendarVisibility;

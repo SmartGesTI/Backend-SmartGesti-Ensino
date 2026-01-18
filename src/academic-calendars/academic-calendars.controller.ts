@@ -14,6 +14,10 @@ import {
 } from '@nestjs/common';
 import { AcademicCalendarsService } from './academic-calendars.service';
 import { AcademicCalendarAuditService } from './academic-calendar-audit.service';
+import {
+  CalendarDerivationService,
+  DerivedDaysResponse,
+} from './calendar-derivation.service';
 import { JwtAuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
@@ -50,6 +54,7 @@ export class AcademicCalendarsController {
   constructor(
     private calendarsService: AcademicCalendarsService,
     private auditService: AcademicCalendarAuditService,
+    private derivationService: CalendarDerivationService,
     private usersService: UsersService,
     private tenantsService: TenantsService,
     private logger: LoggerService,
@@ -220,7 +225,35 @@ export class AcademicCalendarsController {
   }
 
   // ============================================
-  // Calendar Days
+  // Derived Days (Derivacao sob demanda)
+  // ============================================
+
+  @Get(':id/derived-days')
+  async getDerivedDays(
+    @CurrentUser() user: CurrentUserPayload,
+    @Subdomain() subdomain: string | undefined,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('start') startDate: string,
+    @Query('end') endDate: string,
+  ): Promise<DerivedDaysResponse> {
+    const tenantId = await this.getTenantId(subdomain);
+
+    if (!startDate || !endDate) {
+      throw new BadRequestException(
+        'Parametros start e end sao obrigatorios (formato: YYYY-MM-DD)',
+      );
+    }
+
+    const calendar = await this.calendarsService.findOne(id, tenantId);
+    if (!calendar) {
+      throw new NotFoundException('Calendario nao encontrado');
+    }
+
+    return this.derivationService.deriveDays(calendar, startDate, endDate);
+  }
+
+  // ============================================
+  // Calendar Days (Overrides)
   // ============================================
 
   @Get(':id/days')
