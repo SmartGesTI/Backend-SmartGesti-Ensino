@@ -4,6 +4,8 @@ import {
   ConflictException,
   ForbiddenException,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoggerService } from '../common/logger/logger.service';
@@ -11,6 +13,7 @@ import { SoftDeleteService } from '../common/services/soft-delete.service';
 import { AcademicYear } from '../common/types';
 import { CreateAcademicYearDto } from './dto/create-academic-year.dto';
 import { UpdateAcademicYearDto } from './dto/update-academic-year.dto';
+import { AcademicCalendarsService } from '../academic-calendars/academic-calendars.service';
 
 @Injectable()
 export class AcademicYearsService {
@@ -18,6 +21,8 @@ export class AcademicYearsService {
     private supabaseService: SupabaseService,
     private logger: LoggerService,
     private softDeleteService: SoftDeleteService,
+    @Inject(forwardRef(() => AcademicCalendarsService))
+    private calendarsService: AcademicCalendarsService,
   ) {}
 
   private get supabase() {
@@ -274,5 +279,105 @@ export class AcademicYearsService {
     }
 
     this.logger.log('Academic year deleted', 'AcademicYearsService', { id });
+  }
+
+  /**
+   * Encontra ou cria o Academic Year apropriado para criação de calendário
+   * - Se escola não tem calendário ativo: retorna/cria ano atual
+   * - Se escola tem calendário ativo: retorna/cria ano seguinte
+   */
+  async findOrCreateForCalendar(
+    tenantId: string,
+    schoolId: string,
+    userId?: string,
+  ): Promise<AcademicYear> {
+    // 1. Buscar calendários ativos da escola
+    const activeCalendars = await this.calendarsService.findAll(tenantId, {
+      schoolId,
+      status: 'active',
+    });
+
+    let targetYear: number;
+
+    if (activeCalendars.length === 0) {
+      // Não há calendário ativo: usar ano atual
+      targetYear = new Date().getFullYear();
+      this.logger.log(
+        `No active calendar found, using current year: ${targetYear}`,
+        'AcademicYearsService',
+      );
+    } else {
+      // Há calendário ativo: buscar o academic year do calendário mais recente
+      const mostRecentCalendar = activeCalendars.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )[0];
+
+      // Buscar o academic year do calendário
+      const calendarAcademicYear = await this.findOne(
+        mostRecentCalendar.academic_year_id,
+        tenantId,
+      );
+
+      if (!calendarAcademicYear) {
+        // Se não encontrar, usar ano atual como fallback
+        targetYear = new Date().getFullYear();
+        this.logger.warn(
+          `Academic year ${mostRecentCalendar.academic_year_id} not found, using current year`,
+          'AcademicYearsService',
+        );
+      } else {
+        // Usar ano seguinte
+        targetYear = calendarAcademicYear.year + 1;
+        this.logger.log(
+          `Active calendar found for year ${calendarAcademicYear.year}, using next year: ${targetYear}`,
+          'AcademicYearsService',
+        );
+      }
+    }
+
+    // 2. Buscar academic year do ano alvo
+    const existingYear = await this.supabase
+      .from('academic_years')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('school_id', schoolId)
+      .eq('year', targetYear)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (existingYear.error && existingYear.error.code !== 'PGRST116') {
+      throw new Error(
+        `Failed to check existing academic year: ${existingYear.error.message}`,
+      );
+    }
+
+    if (existingYear.data) {
+      // Ano já existe, retornar
+      this.logger.log(
+        `Academic year ${targetYear} already exists`,
+        'AcademicYearsService',
+      );
+      return existingYear.data as AcademicYear;
+    }
+
+    // 3. Criar academic year do ano alvo
+    const startDate = new Date(targetYear, 0, 1).toISOString().split('T')[0]; // 01/01
+    const endDate = new Date(targetYear, 11, 31).toISOString().split('T')[0]; // 31/12
+
+    const createDto: CreateAcademicYearDto = {
+      school_id: schoolId,
+      year: targetYear,
+      start_date: startDate,
+      end_date: endDate,
+      status: 'planning',
+    };
+
+    this.logger.log(
+      `Creating academic year ${targetYear} for calendar`,
+      'AcademicYearsService',
+    );
+
+    return this.create(tenantId, createDto, userId);
   }
 }

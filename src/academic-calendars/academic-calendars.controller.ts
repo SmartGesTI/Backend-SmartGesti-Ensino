@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -12,6 +13,7 @@ import {
   BadRequestException,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { IsString, IsNotEmpty } from 'class-validator';
 import { AcademicCalendarsService } from './academic-calendars.service';
 import { AcademicCalendarAuditService } from './academic-calendar-audit.service';
 import {
@@ -32,6 +34,7 @@ import { UpdateCalendarDayDto } from './dto/update-calendar-day.dto';
 import { CreateCalendarEventDto } from './dto/create-calendar-event.dto';
 import { UpdateCalendarEventDto } from './dto/update-calendar-event.dto';
 import { ReplicateFromBlueprintDto } from './dto/replicate-from-blueprint.dto';
+import { UpdateWizardDto, CompleteWizardDto } from './dto/update-wizard.dto';
 import type {
   AcademicCalendar,
   AcademicCalendarDay,
@@ -45,6 +48,8 @@ import type {
 } from '../common/types';
 
 class StatusChangeDto {
+  @IsString()
+  @IsNotEmpty()
   reason: string;
 }
 
@@ -191,6 +196,18 @@ export class AcademicCalendarsController {
     return this.calendarsService.archive(id, tenantId, dto.reason, dbUser?.id);
   }
 
+  @Post(':id/set-to-draft')
+  async setToDraft(
+    @CurrentUser() user: CurrentUserPayload,
+    @Subdomain() subdomain: string | undefined,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: StatusChangeDto,
+  ): Promise<AcademicCalendar> {
+    const tenantId = await this.getTenantId(subdomain);
+    const dbUser = await this.usersService.getUserByAuth0Id(user.sub);
+    return this.calendarsService.setToDraft(id, tenantId, dto.reason, dbUser?.id);
+  }
+
   @Delete(':id')
   async remove(
     @CurrentUser() user: CurrentUserPayload,
@@ -220,6 +237,45 @@ export class AcademicCalendarsController {
       tenantId,
       dto.blueprint_id,
       dto.reason,
+      dbUser?.id,
+    );
+  }
+
+  // ============================================
+  // Wizard
+  // ============================================
+
+  @Patch(':id/wizard')
+  async updateWizard(
+    @CurrentUser() user: CurrentUserPayload,
+    @Subdomain() subdomain: string | undefined,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateWizardDto,
+  ): Promise<AcademicCalendar> {
+    const tenantId = await this.getTenantId(subdomain);
+    const dbUser = await this.usersService.getUserByAuth0Id(user.sub);
+    return this.calendarsService.updateWizard(
+      id,
+      tenantId,
+      dto.wizard_step,
+      dto.wizard_data,
+      dbUser?.id,
+    );
+  }
+
+  @Post(':id/wizard/complete')
+  async completeWizard(
+    @CurrentUser() user: CurrentUserPayload,
+    @Subdomain() subdomain: string | undefined,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CompleteWizardDto,
+  ): Promise<AcademicCalendar> {
+    const tenantId = await this.getTenantId(subdomain);
+    const dbUser = await this.usersService.getUserByAuth0Id(user.sub);
+    return this.calendarsService.completeWizard(
+      id,
+      tenantId,
+      dto.final_data,
       dbUser?.id,
     );
   }

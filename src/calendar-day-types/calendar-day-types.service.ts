@@ -40,10 +40,12 @@ export class CalendarDayTypesService {
    * 1. Tipos do sistema (is_system_type=true)
    * 2. Tipos compartilhados no tenant (is_shared=true AND tenant_id=X)
    * 3. Tipos privados da escola (school_id=X)
+   * 
+   * Se schoolId for null, retorna apenas tipos do sistema
    */
   async findAll(
     tenantId: string,
-    schoolId: string,
+    schoolId: string | null,
     filters: FindAllFilters = {},
   ): Promise<CalendarDayType[]> {
     const { includeSystem = true, includeShared = true, includeDeleted = false } = filters;
@@ -55,12 +57,19 @@ export class CalendarDayTypesService {
       orConditions.push('is_system_type.eq.true');
     }
 
-    if (includeShared) {
-      orConditions.push(`and(is_shared.eq.true,tenant_id.eq.${tenantId})`);
-    }
+    // Se nao tem schoolId, retorna apenas tipos do sistema
+    if (!schoolId) {
+      if (orConditions.length === 0) {
+        return [];
+      }
+    } else {
+      if (includeShared) {
+        orConditions.push(`and(is_shared.eq.true,tenant_id.eq.${tenantId})`);
+      }
 
-    // Sempre incluir tipos privados da escola
-    orConditions.push(`school_id.eq.${schoolId}`);
+      // Incluir tipos privados da escola
+      orConditions.push(`school_id.eq.${schoolId}`);
+    }
 
     let query = this.supabase
       .getClient()

@@ -28,6 +28,10 @@ export class CreateCalendarDayDto {
   @IsOptional()
   source_blueprint_day_id?: string;
 
+  @IsUUID()
+  @IsOptional()
+  day_type_id?: string | null;
+
   @IsBoolean()
   @IsOptional()
   is_override?: boolean;

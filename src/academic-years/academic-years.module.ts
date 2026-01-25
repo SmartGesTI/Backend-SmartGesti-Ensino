@@ -5,6 +5,7 @@ import { SupabaseModule } from '../supabase/supabase.module';
 import { LoggerModule } from '../common/logger/logger.module';
 import { UsersModule } from '../users/users.module';
 import { TenantsModule } from '../tenants/tenants.module';
+import { AcademicCalendarsModule } from '../academic-calendars/academic-calendars.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { TenantsModule } from '../tenants/tenants.module';
     LoggerModule,
     UsersModule,
     forwardRef(() => TenantsModule),
+    forwardRef(() => AcademicCalendarsModule),
   ],
   controllers: [AcademicYearsController],
   providers: [AcademicYearsService],

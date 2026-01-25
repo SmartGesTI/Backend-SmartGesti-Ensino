@@ -59,6 +59,8 @@ export class CalendarDayTypesController {
   /**
    * Lista tipos de dia visiveis para a escola
    * GET /calendar-day-types
+   * 
+   * Se x-school-id nao for fornecido, retorna apenas tipos do sistema
    */
   @Get()
   async findAll(
@@ -69,7 +71,8 @@ export class CalendarDayTypesController {
     @Query('includeShared') includeShared?: string,
   ): Promise<CalendarDayType[]> {
     const tenantId = await this.getTenantId(subdomain);
-    const schoolId = this.getSchoolId(schoolIdHeader);
+    // x-school-id e opcional na listagem - se nao fornecido, retorna apenas tipos do sistema
+    const schoolId = schoolIdHeader || null;
 
     return this.calendarDayTypesService.findAll(tenantId, schoolId, {
       includeSystem: includeSystem !== 'false',

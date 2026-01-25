@@ -462,6 +462,61 @@ export class AcademicCalendarsService {
     return data;
   }
 
+  async setToDraft(
+    id: string,
+    tenantId: string,
+    reason: string,
+    userId?: string,
+  ): Promise<AcademicCalendar> {
+    const existing = await this.findOne(id, tenantId);
+    if (!existing) {
+      throw new NotFoundException(`Calendario com id '${id}' nao encontrado`);
+    }
+
+    // Apenas calendarios com status 'active' ou 'archived' podem voltar para 'draft'
+    if (existing.status !== 'active' && existing.status !== 'archived') {
+      throw new BadRequestException(
+        'Apenas calendarios ativos ou arquivados podem voltar para rascunho',
+      );
+    }
+
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('academic_calendars')
+      .update({
+        status: 'draft',
+        updated_at: new Date().toISOString(),
+        updated_by: userId,
+        // NÃO alterar wizard_completed_at - mantém histórico
+        // NÃO alterar wizard_data - mantém dados preenchidos
+      })
+      .eq('id', id)
+      .eq('tenant_id', tenantId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Erro ao voltar calendario para rascunho: ${error.message}`);
+    }
+
+    await this.auditService.log({
+      tenantId,
+      schoolId: existing.school_id,
+      entityType: 'academic_calendar',
+      entityId: id,
+      calendarId: id,
+      academicYearId: existing.academic_year_id,
+      action: 'calendar.status_changed',
+      summary: `Calendario voltou para rascunho: ${existing.status} -> draft`,
+      reason,
+      actorUserId: userId,
+      beforeSnapshot: { status: existing.status },
+      afterSnapshot: { status: 'draft' },
+    });
+
+    return data;
+  }
+
   async remove(id: string, tenantId: string, userId: string): Promise<void> {
     const existing = await this.findOne(id, tenantId);
     if (!existing) {
@@ -1102,5 +1157,120 @@ export class AcademicCalendarsService {
         existing as unknown as Record<string, unknown>,
       ),
     });
+  }
+
+  // ============================================
+  // Wizard
+  // ============================================
+
+  async updateWizard(
+    id: string,
+    tenantId: string,
+    wizardStep: number,
+    wizardData?: Record<string, unknown>,
+    userId?: string,
+  ): Promise<AcademicCalendar> {
+    const existing = await this.findOne(id, tenantId);
+    if (!existing) {
+      throw new NotFoundException(`Calendario com id '${id}' nao encontrado`);
+    }
+
+    // Mesclar wizard_data existente com novos dados
+    const mergedWizardData = {
+      ...(existing.wizard_data || {}),
+      ...(wizardData || {}),
+    };
+
+    // Preparar dados para atualizacao
+    // Permite atualizar wizard_step e wizard_data mesmo apos conclusao
+    // mas nao permite alterar wizard_completed_at (só pode ser setado, nunca removido)
+    const updateData: {
+      wizard_step: number;
+      wizard_data: Record<string, unknown>;
+      updated_at: string;
+      updated_by?: string;
+    } = {
+      wizard_step: wizardStep,
+      wizard_data: mergedWizardData,
+      updated_at: new Date().toISOString(),
+      updated_by: userId,
+    };
+
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('academic_calendars')
+      .update(updateData)
+      .eq('id', id)
+      .eq('tenant_id', tenantId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Erro ao atualizar wizard: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async completeWizard(
+    id: string,
+    tenantId: string,
+    finalData?: Record<string, unknown>,
+    userId?: string,
+  ): Promise<AcademicCalendar> {
+    const existing = await this.findOne(id, tenantId);
+    if (!existing) {
+      throw new NotFoundException(`Calendario com id '${id}' nao encontrado`);
+    }
+
+    // Nao permite completar novamente
+    if (existing.wizard_completed_at) {
+      throw new ConflictException('Wizard ja foi completado para este calendario');
+    }
+
+    // Mesclar dados finais
+    const mergedWizardData = {
+      ...(existing.wizard_data || {}),
+      ...(finalData || {}),
+    };
+
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('academic_calendars')
+      .update({
+        wizard_step: 7,
+        wizard_data: mergedWizardData,
+        wizard_completed_at: new Date().toISOString(),
+        status: 'active', // Ativar calendario ao completar wizard
+        updated_at: new Date().toISOString(),
+        updated_by: userId,
+      })
+      .eq('id', id)
+      .eq('tenant_id', tenantId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Erro ao completar wizard: ${error.message}`);
+    }
+
+    // Registrar auditoria
+    await this.auditService.log({
+      tenantId,
+      schoolId: existing.school_id,
+      entityType: 'academic_calendar',
+      entityId: id,
+      calendarId: id,
+      academicYearId: existing.academic_year_id,
+      action: 'calendar.status_changed',
+      summary: 'Calendario ativado apos conclusao do wizard',
+      reason: 'Wizard de configuracao concluido',
+      actorUserId: userId,
+      changedFields: ['status', 'wizard_completed_at'],
+      beforeSnapshot: { status: existing.status, wizard_completed_at: null },
+      afterSnapshot: { status: 'active', wizard_completed_at: data.wizard_completed_at },
+    });
+
+    return data;
   }
 }

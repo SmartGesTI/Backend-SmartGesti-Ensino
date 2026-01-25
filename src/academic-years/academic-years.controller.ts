@@ -11,6 +11,7 @@ import {
   NotFoundException,
   BadRequestException,
   ParseUUIDPipe,
+  Headers,
 } from '@nestjs/common';
 import { AcademicYearsService } from './academic-years.service';
 import { JwtAuthGuard } from '../auth/auth.guard';
@@ -70,6 +71,26 @@ export class AcademicYearsController {
 
     const tenantId = await this.getTenantId(subdomain);
     return this.academicYearsService.findCurrent(tenantId, schoolId);
+  }
+
+  @Get('for-calendar')
+  async findOrCreateForCalendar(
+    @CurrentUser() user: CurrentUserPayload,
+    @Subdomain() subdomain: string | undefined,
+    @Headers('x-school-id') schoolIdHeader: string | undefined,
+  ): Promise<AcademicYear> {
+    if (!schoolIdHeader) {
+      throw new BadRequestException('Header x-school-id é obrigatório');
+    }
+
+    const tenantId = await this.getTenantId(subdomain);
+    const dbUser = await this.usersService.getUserByAuth0Id(user.sub);
+
+    return this.academicYearsService.findOrCreateForCalendar(
+      tenantId,
+      schoolIdHeader,
+      dbUser?.id,
+    );
   }
 
   @Get(':id')

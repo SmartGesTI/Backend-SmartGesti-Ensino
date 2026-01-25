@@ -185,6 +185,10 @@ export interface AcademicCalendar
   status: AcademicCalendarStatus;
   settings: Record<string, unknown>;
   metadata: Record<string, unknown>;
+  // Wizard fields
+  wizard_step: number;
+  wizard_completed_at: string | null;
+  wizard_data: Record<string, unknown>;
 }
 
 export interface AcademicCalendarDay extends AuditFields, SoftDeleteFields {
