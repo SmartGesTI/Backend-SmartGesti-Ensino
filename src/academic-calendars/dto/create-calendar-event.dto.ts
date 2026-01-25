@@ -8,6 +8,7 @@ import {
   IsDateString,
   IsUUID,
   MaxLength,
+  Matches,
 } from 'class-validator';
 import type { CalendarVisibility } from '../../common/types/calendar.types';
 
@@ -21,6 +22,11 @@ export class CreateCalendarEventDto {
   @MaxLength(200)
   title: string;
 
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  description?: string;
+
   @IsDateString()
   @IsNotEmpty()
   start_date: string;
@@ -28,6 +34,18 @@ export class CreateCalendarEventDto {
   @IsDateString()
   @IsNotEmpty()
   end_date: string;
+
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/, {
+    message: 'start_time deve estar no formato HH:MM ou HH:MM:SS',
+  })
+  @IsOptional()
+  start_time?: string; // HH:MM ou HH:MM:SS
+
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/, {
+    message: 'end_time deve estar no formato HH:MM ou HH:MM:SS',
+  })
+  @IsOptional()
+  end_time?: string; // HH:MM ou HH:MM:SS
 
   @IsBoolean()
   @IsOptional()
