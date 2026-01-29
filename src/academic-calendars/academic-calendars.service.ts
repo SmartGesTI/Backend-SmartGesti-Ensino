@@ -496,7 +496,9 @@ export class AcademicCalendarsService {
       .single();
 
     if (error) {
-      throw new Error(`Erro ao voltar calendario para rascunho: ${error.message}`);
+      throw new Error(
+        `Erro ao voltar calendario para rascunho: ${error.message}`,
+      );
     }
 
     await this.auditService.log({
@@ -906,6 +908,124 @@ export class AcademicCalendarsService {
   }
 
   // ============================================
+  // Helper: Sincronizar Day Overrides com Eventos
+  // ============================================
+
+  /**
+   * Sincroniza os overrides de dias baseado em um evento que afeta instrução.
+   * Cria ou atualiza overrides para cada dia no range do evento.
+   */
+  private async syncDayOverridesForEvent(
+    calendarId: string,
+    tenantId: string,
+    event: AcademicCalendarEvent,
+    userId?: string,
+  ): Promise<void> {
+    // Se affects_instruction é null, não faz nada (usa padrão do tipo)
+    if (event.affects_instruction === null) {
+      return;
+    }
+
+    // Gerar todas as datas no range do evento
+    const dates = this.getDateRange(event.start_date, event.end_date);
+    const isInstructional = event.affects_instruction === true;
+    const dayKind: CalendarDayKind = isInstructional
+      ? 'instructional'
+      : 'non_instructional';
+
+    for (const dateStr of dates) {
+      // Verificar se já existe um override para este dia
+      const { data: existingDay } = await this.supabase
+        .getClient()
+        .from('academic_calendar_days')
+        .select('*')
+        .eq('calendar_id', calendarId)
+        .eq('day_date', dateStr)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (existingDay) {
+        // Atualizar override existente
+        await this.supabase
+          .getClient()
+          .from('academic_calendar_days')
+          .update({
+            day_kind: dayKind,
+            is_instructional: isInstructional,
+            override_reason: `Definido pelo evento "${event.title}"`,
+            is_override: true,
+            updated_at: new Date().toISOString(),
+            updated_by: userId,
+          })
+          .eq('id', existingDay.id);
+      } else {
+        // Criar novo override
+        await this.supabase
+          .getClient()
+          .from('academic_calendar_days')
+          .insert({
+            calendar_id: calendarId,
+            day_date: dateStr,
+            day_kind: dayKind,
+            is_instructional: isInstructional,
+            is_override: true,
+            override_reason: `Definido pelo evento "${event.title}"`,
+            metadata: { source_event_id: event.id },
+            created_by: userId,
+            updated_by: userId,
+          });
+      }
+    }
+  }
+
+  /**
+   * Remove overrides de dias que foram criados por um evento específico.
+   */
+  private async removeDayOverridesForEvent(
+    calendarId: string,
+    event: AcademicCalendarEvent,
+    userId?: string,
+  ): Promise<void> {
+    // Buscar overrides que foram criados por este evento
+    const { data: overrides } = await this.supabase
+      .getClient()
+      .from('academic_calendar_days')
+      .select('*')
+      .eq('calendar_id', calendarId)
+      .contains('metadata', { source_event_id: event.id })
+      .is('deleted_at', null);
+
+    if (overrides && overrides.length > 0) {
+      // Soft delete dos overrides relacionados ao evento
+      for (const override of overrides) {
+        await this.softDeleteService.softDelete(
+          this.supabase.getClient(),
+          'academic_calendar_days',
+          override.id,
+          userId ?? '',
+        );
+      }
+    }
+  }
+
+  /**
+   * Gera um array de datas (YYYY-MM-DD) entre start e end (inclusive).
+   */
+  private getDateRange(startDate: string, endDate: string): string[] {
+    const dates: string[] = [];
+    const start = new Date(startDate + 'T12:00:00');
+    const end = new Date(endDate + 'T12:00:00');
+
+    const current = new Date(start);
+    while (current <= end) {
+      dates.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+
+    return dates;
+  }
+
+  // ============================================
   // Calendar Events
   // ============================================
 
@@ -1022,6 +1142,11 @@ export class AcademicCalendarsService {
       afterSnapshot: this.auditService.createLeanSnapshot(data),
     });
 
+    // Sincronizar overrides de dias se o evento afeta instrução
+    if (data.affects_instruction !== null) {
+      await this.syncDayOverridesForEvent(calendarId, tenantId, data, userId);
+    }
+
     return data;
   }
 
@@ -1109,6 +1234,21 @@ export class AcademicCalendarsService {
       });
     }
 
+    // Se affects_instruction mudou, atualizar os overrides
+    const affectsChanged =
+      dto.affects_instruction !== undefined &&
+      dto.affects_instruction !== existing.affects_instruction;
+
+    if (affectsChanged) {
+      // Primeiro remover overrides antigos
+      await this.removeDayOverridesForEvent(calendarId, existing, userId);
+
+      // Depois criar novos se necessário
+      if (data.affects_instruction !== null) {
+        await this.syncDayOverridesForEvent(calendarId, tenantId, data, userId);
+      }
+    }
+
     return data;
   }
 
@@ -1157,6 +1297,11 @@ export class AcademicCalendarsService {
         existing as unknown as Record<string, unknown>,
       ),
     });
+
+    // Remover overrides de dias que foram criados por este evento
+    if (existing.affects_instruction !== null) {
+      await this.removeDayOverridesForEvent(calendarId, existing, userId);
+    }
   }
 
   // ============================================
@@ -1225,7 +1370,9 @@ export class AcademicCalendarsService {
 
     // Nao permite completar novamente
     if (existing.wizard_completed_at) {
-      throw new ConflictException('Wizard ja foi completado para este calendario');
+      throw new ConflictException(
+        'Wizard ja foi completado para este calendario',
+      );
     }
 
     // Mesclar dados finais
@@ -1268,7 +1415,10 @@ export class AcademicCalendarsService {
       actorUserId: userId,
       changedFields: ['status', 'wizard_completed_at'],
       beforeSnapshot: { status: existing.status, wizard_completed_at: null },
-      afterSnapshot: { status: 'active', wizard_completed_at: data.wizard_completed_at },
+      afterSnapshot: {
+        status: 'active',
+        wizard_completed_at: data.wizard_completed_at,
+      },
     });
 
     return data;
