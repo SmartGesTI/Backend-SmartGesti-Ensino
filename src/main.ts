@@ -32,18 +32,27 @@ async function bootstrap() {
     }),
   );
 
-  // CORS: origens explícitas para funcionar em produção (Vercel) e dev
+  // CORS: origens explícitas + subdomínios de tenant (*.smartgesti.com.br)
   const allowedOrigins = [
     'https://smartgesti.com.br',
     'https://www.smartgesti.com.br',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
   ];
+  const isAllowedOrigin = (origin: string): boolean => {
+    if (allowedOrigins.includes(origin)) return true;
+    // Subdomínios de tenant: https://magistral.smartgesti.com.br, https://*.smartgesti.com.br
+    if (origin.startsWith('https://') && origin.endsWith('.smartgesti.com.br'))
+      return true;
+    if (origin.startsWith('http://') && origin.endsWith('.localhost:5173'))
+      return true; // dev com subdomínio
+    if (origin.endsWith('.vercel.app')) return true;
+    return false;
+  };
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      if (origin.endsWith('.vercel.app')) return callback(null, true);
+      if (isAllowedOrigin(origin)) return callback(null, true);
       callback(null, false);
     },
     credentials: true,
