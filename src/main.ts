@@ -4,10 +4,49 @@ import { AppModule } from './app.module';
 import { LoggerService } from './common/logger/logger.service';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import * as bodyParser from 'body-parser';
+import { Request, Response, NextFunction } from 'express';
+
+function isAllowedCorsOrigin(origin: string): boolean {
+  const allowed = [
+    'https://smartgesti.com.br',
+    'https://www.smartgesti.com.br',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+  ];
+  if (allowed.includes(origin)) return true;
+  if (origin.startsWith('https://') && origin.endsWith('.smartgesti.com.br'))
+    return true;
+  if (origin.startsWith('http://') && origin.endsWith('.localhost:5173'))
+    return true;
+  if (origin.endsWith('.vercel.app')) return true;
+  return false;
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
+  });
+
+  // CORS preflight: responder OPTIONS antes de qualquer outro middleware (crítico na Vercel)
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const origin = req.headers.origin;
+    if (origin && isAllowedCorsOrigin(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader(
+        'Access-Control-Allow-Methods',
+        'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      );
+      res.setHeader(
+        'Access-Control-Allow-Headers',
+        'Content-Type, Authorization, X-School-Id',
+      );
+      res.setHeader('Access-Control-Max-Age', '86400');
+    }
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
+    next();
   });
 
   // Aumentar limite do body-parser para documentos grandes (50MB)
@@ -32,27 +71,11 @@ async function bootstrap() {
     }),
   );
 
-  // CORS: origens explícitas + subdomínios de tenant (*.smartgesti.com.br)
-  const allowedOrigins = [
-    'https://smartgesti.com.br',
-    'https://www.smartgesti.com.br',
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-  ];
-  const isAllowedOrigin = (origin: string): boolean => {
-    if (allowedOrigins.includes(origin)) return true;
-    // Subdomínios de tenant: https://magistral.smartgesti.com.br, https://*.smartgesti.com.br
-    if (origin.startsWith('https://') && origin.endsWith('.smartgesti.com.br'))
-      return true;
-    if (origin.startsWith('http://') && origin.endsWith('.localhost:5173'))
-      return true; // dev com subdomínio
-    if (origin.endsWith('.vercel.app')) return true;
-    return false;
-  };
+  // CORS (NestJS): mesma lógica para respostas de GET/POST/etc.
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (isAllowedOrigin(origin)) return callback(null, true);
+      if (isAllowedCorsOrigin(origin)) return callback(null, true);
       callback(null, false);
     },
     credentials: true,
