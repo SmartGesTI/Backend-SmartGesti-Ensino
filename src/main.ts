@@ -27,35 +27,10 @@ async function bootstrap() {
     bufferLogs: true,
   });
 
-  // OPTIONS explícito no Express (Vercel serverless pode não passar pelo middleware na ordem esperada)
-  const expressApp = app.getHttpAdapter().getInstance() as ReturnType<
-    typeof import('express')
-  >;
-  expressApp.options('*', (req: Request, res: Response) => {
-    const rawOrigin = req.headers.origin;
-    const origin =
-      typeof rawOrigin === 'string'
-        ? rawOrigin
-        : Array.isArray(rawOrigin)
-          ? rawOrigin[0]
-          : undefined;
-    if (origin && isAllowedCorsOrigin(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader(
-        'Access-Control-Allow-Methods',
-        'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-      );
-      res.setHeader(
-        'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, X-School-Id, X-Tenant-Subdomain, X-Tenant-Id',
-      );
-      res.setHeader('Access-Control-Max-Age', '86400');
-    }
-    res.status(204).end();
-  });
-
-  // CORS preflight: responder OPTIONS antes de qualquer outro middleware (crítico na Vercel)
+  // CORS preflight: responder OPTIONS antes de qualquer outro middleware (crítico na Vercel).
+  // Nota: expressApp.options('*', ...) foi removido porque path-to-regexp v7+ (Express na Vercel)
+  // não aceita o path '*' (erro "Missing parameter name at index 1"). O middleware abaixo trata
+  // OPTIONS para todas as rotas.
   app.use((req: Request, res: Response, next: NextFunction) => {
     try {
       const rawOrigin = req.headers.origin;

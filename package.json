@@ -28,7 +28,9 @@
     "supabase:link": "cd .. && supabase link --project-ref eazovcqdbarejrhxvjdm",
     "rag:ingest": "ts-node -r tsconfig-paths/register src/cli.ts rag:ingest",
     "rag:ingest:http": "npm run start:dev & sleep 20 && node scripts/ingest-rag.js && pkill -f \"nest start\"",
-    "rag:status": "ts-node -r tsconfig-paths/register src/cli.ts rag:status"
+    "rag:status": "ts-node -r tsconfig-paths/register src/cli.ts rag:status",
+    "vercel:verify": "node scripts/verify-vercel.mjs",
+    "vercel:verify:prod": "node scripts/verify-vercel.mjs https://backend-smart-gesti-ensino.vercel.app"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.2",

@@ -66,4 +66,4 @@ O deploy será feito automaticamente a cada push na branch principal.
 
 ### Vercel (região São Paulo, gru1)
 
-O projeto está preparado para deploy na Vercel com `vercel.json` (região gru1, NestJS, geração de PDF com Chromium serverless). Passos completos, variáveis de ambiente e migração Railway → Vercel: **[docs/MIGRATION_RAILWAY_TO_VERCEL.md](../docs/MIGRATION_RAILWAY_TO_VERCEL.md)**.
+O projeto está preparado para deploy na Vercel com `vercel.json` (região gru1, NestJS, geração de PDF com Chromium serverless). Passos completos, variáveis de ambiente e migração Railway → Vercel: **[docs/MIGRATION_RAILWAY_TO_VERCEL.md](../docs/MIGRATION_RAILWAY_TO_VERCEL.md)**. Após o deploy, rode `npm run vercel:verify` para validar health e CORS (ver seção "Testes pós-migração" na doc).

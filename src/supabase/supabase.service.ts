@@ -10,12 +10,20 @@ export class SupabaseService {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
     const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_KEY');
 
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase environment variables');
+    const missing: string[] = [];
+    if (!supabaseUrl) missing.push('SUPABASE_URL');
+    if (!supabaseKey) missing.push('SUPABASE_SERVICE_KEY');
+    if (missing.length > 0) {
+      throw new Error(
+        `Missing Supabase environment variables: ${missing.join(', ')}. ` +
+          'Configure them in Vercel: Project Settings → Environment Variables.',
+      );
     }
 
+    const url = supabaseUrl as string;
+    const key = supabaseKey as string;
     // Configurar fetch customizado para resolver problemas de DNS/rede
-    this.client = createClient(supabaseUrl, supabaseKey, {
+    this.client = createClient(url, key, {
       auth: {
         persistSession: false,
       },
