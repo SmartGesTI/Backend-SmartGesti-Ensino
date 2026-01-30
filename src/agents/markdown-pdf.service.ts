@@ -1,7 +1,11 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import puppeteer, { Browser } from 'puppeteer';
+import puppeteerCore from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import { marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
+
+const isVercel = process.env.VERCEL === '1';
 
 export interface PdfRenderContext {
   institutionName?: string;
@@ -41,12 +45,22 @@ export class MarkdownPdfService implements OnModuleDestroy {
     if (this.browser) return this.browser;
     if (this.launching) return this.launching;
 
-    this.launching = puppeteer
-      .launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      })
+    const launchOptions = isVercel
+      ? {
+          args: chromium.args,
+          defaultViewport: chromium.defaultViewport,
+          executablePath: await chromium.executablePath(),
+          headless: chromium.headless,
+        }
+      : {
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        };
+
+    const launcher = isVercel ? puppeteerCore : puppeteer;
+    this.launching = launcher
+      .launch(launchOptions as Parameters<typeof puppeteer.launch>[0])
       .then((b) => {
         this.browser = b;
         this.launching = null;
