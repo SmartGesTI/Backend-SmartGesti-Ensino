@@ -39,7 +39,7 @@ async function bootstrap() {
       );
       res.setHeader(
         'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, X-School-Id',
+        'Content-Type, Authorization, X-School-Id, X-Tenant-Subdomain, X-Tenant-Id',
       );
       res.setHeader('Access-Control-Max-Age', '86400');
     }
@@ -73,14 +73,23 @@ async function bootstrap() {
 
   // CORS (NestJS): mesma lógica para respostas de GET/POST/etc.
   app.enableCors({
-    origin: (origin, callback) => {
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
       if (!origin) return callback(null, true);
       if (isAllowedCorsOrigin(origin)) return callback(null, true);
       callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-School-Id'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-School-Id',
+      'X-Tenant-Subdomain',
+      'X-Tenant-Id',
+    ],
   });
 
   // Global prefix for API routes (excluding health check)
@@ -93,14 +102,14 @@ async function bootstrap() {
   logger.log(`Server listening on http://0.0.0.0:${port}`, 'Bootstrap');
 
   // Graceful shutdown
-  process.on('SIGTERM', async () => {
+  process.on('SIGTERM', () => {
     logger.log('SIGTERM received, shutting down gracefully', 'Bootstrap');
-    await app.close();
+    void app.close();
   });
 
-  process.on('SIGINT', async () => {
+  process.on('SIGINT', () => {
     logger.log('SIGINT received, shutting down gracefully', 'Bootstrap');
-    await app.close();
+    void app.close();
   });
 }
-bootstrap();
+void bootstrap();
