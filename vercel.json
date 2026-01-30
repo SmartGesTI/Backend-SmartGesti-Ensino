@@ -1,11 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["gru1"],
-  "framework": "nestjs",
-  "functions": {
-    "src/main.ts": {
-      "maxDuration": 60,
-      "memory": 1024
-    }
-  }
+  "framework": "nestjs"
 }
