@@ -49,7 +49,7 @@ async function bootstrap() {
         );
         res.setHeader(
           'Access-Control-Allow-Headers',
-          'Content-Type, Authorization, X-School-Id, X-Tenant-Subdomain, X-Tenant-Id',
+          'Content-Type, Authorization, X-School-Id, X-Tenant-Subdomain, X-Tenant-Id, X-Skip-Interceptor',
         );
         res.setHeader('Access-Control-Max-Age', '86400');
       }
@@ -107,6 +107,7 @@ async function bootstrap() {
       'X-School-Id',
       'X-Tenant-Subdomain',
       'X-Tenant-Id',
+      'X-Skip-Interceptor',
     ],
   });
 
