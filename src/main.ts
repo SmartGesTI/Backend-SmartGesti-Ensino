@@ -27,9 +27,18 @@ async function bootstrap() {
     bufferLogs: true,
   });
 
-  // CORS preflight: responder OPTIONS antes de qualquer outro middleware (crítico na Vercel)
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    const origin = req.headers.origin;
+  // OPTIONS explícito no Express (Vercel serverless pode não passar pelo middleware na ordem esperada)
+  const expressApp = app.getHttpAdapter().getInstance() as ReturnType<
+    typeof import('express')
+  >;
+  expressApp.options('*', (req: Request, res: Response) => {
+    const rawOrigin = req.headers.origin;
+    const origin =
+      typeof rawOrigin === 'string'
+        ? rawOrigin
+        : Array.isArray(rawOrigin)
+          ? rawOrigin[0]
+          : undefined;
     if (origin && isAllowedCorsOrigin(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -43,10 +52,44 @@ async function bootstrap() {
       );
       res.setHeader('Access-Control-Max-Age', '86400');
     }
-    if (req.method === 'OPTIONS') {
-      return res.status(204).end();
+    res.status(204).end();
+  });
+
+  // CORS preflight: responder OPTIONS antes de qualquer outro middleware (crítico na Vercel)
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rawOrigin = req.headers.origin;
+      const origin =
+        typeof rawOrigin === 'string'
+          ? rawOrigin
+          : Array.isArray(rawOrigin)
+            ? rawOrigin[0]
+            : undefined;
+      if (origin && isAllowedCorsOrigin(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader(
+          'Access-Control-Allow-Methods',
+          'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+        );
+        res.setHeader(
+          'Access-Control-Allow-Headers',
+          'Content-Type, Authorization, X-School-Id, X-Tenant-Subdomain, X-Tenant-Id',
+        );
+        res.setHeader('Access-Control-Max-Age', '86400');
+      }
+      if (req.method === 'OPTIONS') {
+        res.status(204).end();
+        return;
+      }
+      next();
+    } catch {
+      if (req.method === 'OPTIONS') {
+        res.status(204).end();
+        return;
+      }
+      next();
     }
-    next();
   });
 
   // Aumentar limite do body-parser para documentos grandes (50MB)
