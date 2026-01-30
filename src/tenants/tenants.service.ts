@@ -94,22 +94,26 @@ export class TenantsService {
 
       return tenant;
     } catch (err: any) {
-      // Tratar erros de rede/conexão
-      if (
+      // Tratar erros de rede/conexão (URL errada, DNS, timeout, etc.)
+      const isNetworkError =
         err.message?.includes('fetch failed') ||
-        err.cause?.code === 'ECONNREFUSED'
-      ) {
+        err.cause?.code === 'ECONNREFUSED' ||
+        err.cause?.code === 'ENOTFOUND' ||
+        err.cause?.code === 'ETIMEDOUT' ||
+        err.name === 'AbortError';
+      if (isNetworkError) {
         this.logger.error(
-          `Supabase connection failed. Check SUPABASE_URL and network connection.`,
+          `Supabase connection failed. Check SUPABASE_URL (must be project kyszbkkhggzugadamgku) and network.`,
           undefined,
           'TenantsService',
           {
             subdomain,
             error: err.message,
+            causeCode: err.cause?.code,
           },
         );
         throw new Error(
-          'Database connection failed. Please check your Supabase configuration.',
+          'Database connection failed. Please check your Supabase configuration and ensure the migration has been executed.',
         );
       }
       throw err;
